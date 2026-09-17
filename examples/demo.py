@@ -15,7 +15,7 @@ def png(width,height,pixel):
 def build(output):
     scene=Scene()
     group=scene.group(name='Created without PureRef',background='#ff203040')
-    scene.note('PureRef written from scratch',x=0,y=-120,parent=group,font_size=24)
+    scene.note('.pur encoded from scratch, renderd by PureRef',x=0,y=-120,parent=group,font_size=24)
     scene.note('Images · transforms · crops · notes · groups · curves',
                x=0,y=-80,parent=group,font_size=13)
     gradient=png(160,100,lambda x,y:(40+x,70+y,220-y))

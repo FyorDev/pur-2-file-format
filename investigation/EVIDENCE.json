@@ -61,7 +61,7 @@
     },
     "../examples/standalone-demo.pur": {
       "bytes": 77932,
-      "sha256": "48aef6beaa762893f5513f797ec0a297b04bb90771cd68268ac3967874670aa8"
+      "sha256": "31b0be8975d2e3307854ee0401cd3f07b9e1490eb2bf158a79e1b2f9c8b62f3b"
     }
   },
   "unit_tests": 8,

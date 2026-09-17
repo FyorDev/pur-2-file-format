@@ -22,6 +22,21 @@ The [format specification](FORMAT.md) documents the displaced SQLite container,
 MD5 checksum, exact [SQL schema](schema.sql), serialized Qt values, and evidence
 behind each interpretation.
 
+## What doesnt work (WIP)
+
+These features are unsupported or unverified, rather than confirmed working:
+
+- Other PureRef versions, including 2.0 and the unrelated 1.x format.
+- Linked/external image resources and animation playback.
+- Image filter flags and comments.
+- Alternate note styles and group locking modes.
+- Dashed strokes, arrowheads, and other non-default drawing options.
+- Negative or large multi-limb BigRational ordering values.
+- Automatic thumbnail generation; new files use an empty preview unless supplied.
+
+The [specification](FORMAT.md) distinguishes tested behavior from fields whose
+meaning still needs investigation.
+
 ## Install
 
 Python 3.11+ with SQLite serialization support is required.
@@ -98,7 +113,4 @@ preservation. Historical fixtures and experiments live in
 ## Scope
 
 This is an experimental implementation of the tested **2.1.3 subset**, not a
-complete mapping of all 2.x features. Other versions, linked resources, animation,
-filter flags, comments, alternate note/group modes, arbitrary BigRational values,
-and non-default drawing options remain unverified. The specification marks those
-gaps explicitly. This project is independent of PureRef.
+complete mapping of all 2.x features. This project is independent of PureRef.
