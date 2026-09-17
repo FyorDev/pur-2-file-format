@@ -16,6 +16,7 @@ template canvas, or third-party Python dependencies.
 - Embedded PNG/JPEG images with shared resources.
 - Position, rotation, scaling, opacity, and rectangular cropping.
 - Unicode HTML notes, colored backgrounds, and Comfortable/Compact note modes.
+- Multiline Unicode comments on images, notes, groups, and drawings.
 - Groups and nested parent relationships.
 - Solid line and cubic Bézier drawings.
 - File inspection, image extraction, SQLite unpacking, and repacking.
@@ -30,7 +31,7 @@ These features are unsupported or unverified, rather than confirmed working:
 
 - Other PureRef versions, including 2.0 and the unrelated 1.x format.
 - Linked/external image resources and animation playback.
-- Image filter flags and comments.
+- Image filter flags.
 - Alternate group locking modes.
 - Dashed strokes, arrowheads, and other non-default drawing options.
 - Negative or large multi-limb BigRational ordering values.
@@ -74,7 +75,8 @@ from pureref2 import Scene, PurFile
 scene = Scene()
 group = scene.group(name="References", x=100, y=50)
 scene.image("photo.jpg", parent=group, x=0, y=0, rotation=15,
-            scale_x=0.5, scale_y=0.5, opacity=0.8)
+            scale_x=0.5, scale_y=0.5, opacity=0.8,
+            comment="Primary composition reference")
 scene.image("drawing.png", parent=group, x=250, y=0,
             clip=(0, 0, 100, 100))
 scene.note("Unicode notes: Ω 中", parent=group, x=0, y=-100)

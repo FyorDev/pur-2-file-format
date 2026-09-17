@@ -296,11 +296,18 @@ class Scene:
         keys = ','.join(values)
         self.connection.execute(f'INSERT INTO {table} ({keys}) VALUES ({",".join("?" for _ in values)})',list(values.values()))
 
-    def _item(self,name,x,y,parent=-1,scale_x=1,scale_y=1,rotation=0,opacity=1,locked=False):
+    @staticmethod
+    def _validate_comment(comment):
+        if comment is not None and not isinstance(comment,str):
+            raise TypeError('Comment must be a string or None')
+
+    def _item(self,name,x,y,parent=-1,scale_x=1,scale_y=1,rotation=0,opacity=1,locked=False,
+              comment=None):
+        self._validate_comment(comment)
         i = self.next_id
         self.next_id += 1
         self._insert('items',id=i,parent=parent,name=name,transform=transform(x,y,scale_x,scale_y,rotation),
-                     sort_order=rational(i+1),z=float(i+1),opacity=float(opacity),locked=int(locked),comment=None)
+                     sort_order=rational(i+1),z=float(i+1),opacity=float(opacity),locked=int(locked),comment=comment)
         return i
 
     def image(self,path,**options):
@@ -311,8 +318,9 @@ class Scene:
         return self.image_data(data,w,h,format=fmt,source=str(path.resolve()).replace('\\','/'),**options)
 
     def image_data(self,data,w,h,*,format='PNG',source='',x=0,y=0,name=None,parent=-1,
-                   scale_x=1,scale_y=1,rotation=0,opacity=1,clip=None):
+                   scale_x=1,scale_y=1,rotation=0,opacity=1,clip=None,comment=None):
         """Embed encoded image bytes; clip=(left,top,width,height) in original pixels."""
+        self._validate_comment(comment)
         if w<=0 or h<=0:
             raise ValueError('Image dimensions must be positive')
         checksum = hashlib.md5(data).hexdigest()
@@ -321,7 +329,7 @@ class Scene:
             self.resources[checksum] = rid
             self._insert('images',id=rid,source_type=1,origin=source,
                          source=source,format=format,checksum=checksum,data=data,width=w,height=h)
-        i = self._item(name,x,y,parent,scale_x,scale_y,rotation,opacity)
+        i = self._item(name,x,y,parent,scale_x,scale_y,rotation,opacity,comment=comment)
         image_bounds = bounds(w,h)
         if clip is not None:
             left,top,cw,ch = clip
@@ -336,7 +344,7 @@ class Scene:
 
     def note(self,text,*,x=0,y=0,parent=-1,name=None,font='Open Sans',font_size=22,
              color='#eaeaea',background=None,width=-1,height=-1,rich_text=False,
-             style='comfortable'):
+             style='comfortable',comment=None):
         """Create a note with PureRef's 'comfortable' or 'compact' background mode.
 
         Pass Qt-compatible HTML with rich_text=True. Style changes padding only;
@@ -348,18 +356,19 @@ class Scene:
             text = (f'<html><body style="font-family:{html.escape(font,quote=True)};font-size:{float(font_size)}px;'
                     f'color:{html.escape(color,quote=True)};">'
                     f'<p style="white-space:pre-wrap;margin:0">{html.escape(text)}</p></body></html>')
-        i = self._item(name,x,y,parent)
+        i = self._item(name,x,y,parent,comment=comment)
         self._insert('items_notes',id=i,text_color=None,fixed_size=size(width,height),
                      background_color=background or '',text=text,style=NOTE_STYLES[style])
         return i
 
-    def group(self,*,name=None,x=0,y=0,parent=-1,locked=True,background=None):
-        i = self._item(name,x,y,parent)
+    def group(self,*,name=None,x=0,y=0,parent=-1,locked=True,background=None,comment=None):
+        i = self._item(name,x,y,parent,comment=comment)
         self._insert('items_groups',id=i,background_color=background,lock_mode=int(locked))
         return i
 
-    def drawing(self,paths,*,x=0,y=0,parent=-1,name=None,rgba=(46,132,170,200),width=5):
-        i = self._item(name,x,y,parent)
+    def drawing(self,paths,*,x=0,y=0,parent=-1,name=None,rgba=(46,132,170,200),width=5,
+                comment=None):
+        i = self._item(name,x,y,parent,comment=comment)
         self._insert('items_drawings',id=i,strokes=strokes(paths,rgba,width))
         return i
 

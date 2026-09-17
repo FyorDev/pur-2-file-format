@@ -98,5 +98,27 @@ class FormatTests(unittest.TestCase):
         self.assertEqual(s.next_id,0)
         self.assertEqual(s.connection.execute('SELECT count(*) FROM items').fetchone()[0],0)
 
+    def test_comments_on_all_item_types(self):
+        comments=['Image comment: \u03a9\nsecond line','Note comment','Group comment','Drawing comment']
+        s=Scene()
+        s.image(ROOT/'red.png',comment=comments[0])
+        s.note('note',comment=comments[1])
+        s.group(comment=comments[2])
+        s.drawing([[(0,0,0),(1,10,20)]],comment=comments[3])
+        f=PurFile(s.to_bytes())
+        self.assertEqual([row['comment'] for row in f.rows('items')],comments)
+        self.assertEqual({row[0] for row in f.connection.execute(
+            'SELECT typeof(comment) FROM items WHERE comment IS NOT NULL')},{'text'})
+        f.close()
+
+    def test_comment_must_be_text_or_none(self):
+        s=Scene()
+        with self.assertRaises(TypeError):
+            s.note('test',comment=123)
+        self.assertEqual(s.next_id,0)
+        with self.assertRaises(TypeError):
+            s.image(ROOT/'red.png',comment=123)
+        self.assertEqual(s.resources,{})
+
 if __name__ == '__main__':
     unittest.main()

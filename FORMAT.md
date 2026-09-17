@@ -252,7 +252,7 @@ the QVariant/type-name wrapper.
 | `z` | Real-valued stacking coordinate |
 | `opacity` | Real alpha multiplier, tested 0.65 and 1.0 |
 | `locked` | Integer lock flag; ordinary fixtures use 0 |
-| `comment` | Nullable field; semantics not established |
+| `comment` | Nullable plain-text comment. Unicode and line breaks are preserved. Despite the schema's `INTEGER` declaration, non-null comments have SQLite storage class `text` |
 
 IDs start at 0 in the synthetic saves. They need not match resource IDs, and a
 parent can have a larger ID than its children. A group operation changed child

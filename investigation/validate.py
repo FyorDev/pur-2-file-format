@@ -52,13 +52,16 @@ def validate():
 
     # Fresh schema and independently chosen values for every item class.
     s = Scene()
-    g = s.group(name='Generated group',x=20,y=-15,background='#80305070')
-    s.image(ROOT/'red.png',x=-75,y=30,parent=g,rotation=30,scale_x=1.5,scale_y=.75,opacity=.65)
+    comments = ['Group comment','Image comment: \u03a9 \u4e2d\nsecond line','Note comment','Drawing comment']
+    g = s.group(name='Generated group',x=20,y=-15,background='#80305070',comment=comments[0])
+    s.image(ROOT/'red.png',x=-75,y=30,parent=g,rotation=30,scale_x=1.5,scale_y=.75,opacity=.65,
+            comment=comments[1])
     s.image(ROOT/'blue.png',x=65,y=30,parent=g)
     s.image(ROOT/'red.png',x=140,y=30,parent=g)  # deduplication
-    s.note('Written from scratch: \u03a9 \u4e2d\nsecond line',x=0,y=-75,parent=g,background='#a0203040')
+    s.note('Written from scratch: \u03a9 \u4e2d\nsecond line',x=0,y=-75,parent=g,background='#a0203040',
+           comment=comments[2])
     s.drawing([[(0,-90,90),(1,90,90)],[(0,-90,110),(2,-40,150),(3,40,70),(3,90,110)]],
-              parent=g,rgba=(240,100,35,255),width=3)
+              parent=g,rgba=(240,100,35,255),width=3,comment=comments[3])
     s.write(out/'mixed.pur')
     _,mixed = app_render('mixed',out/'mixed.pur')
     assert len(mixed.rows('images')) == 2
@@ -71,7 +74,11 @@ def validate():
     assert len(drawing['strokes']) == 2
     assert drawing['strokes'][0]['width'] == 3
     assert drawing['strokes'][0]['rgba16'] == [61680,25700,8995,65535]
+    assert [row['comment'] for row in mixed.rows('items') if row['comment'] is not None] == comments
+    assert all(row[0] == 'text' for row in mixed.connection.execute(
+        'SELECT typeof(comment) FROM items WHERE comment IS NOT NULL'))
     results['mixed_canvas_all_item_classes'] = True
+    results['comments_round_trip'] = True
     results['mixed_inspection'] = mixed.inspect()
 
     # Crop top-left quarter, preserving the original image coordinate system.

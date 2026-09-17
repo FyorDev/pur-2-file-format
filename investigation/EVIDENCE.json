@@ -68,7 +68,7 @@
       "sha256": "e9b9c61aa29cc153931ba6da9ae0e042d75f80542220f9a8d6398ae8eb68a787"
     }
   },
-  "unit_tests": 11,
+  "unit_tests": 13,
   "demo_log": "standalone-demo.log (local, ignored)",
   "historical_demo_sha256": "fd3c1bdabbca2adb1ffb37f1aaaaaaa7291c24c07633fd2809d42873c109a405"
 }
