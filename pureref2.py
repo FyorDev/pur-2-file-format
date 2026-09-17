@@ -14,6 +14,7 @@ import sqlite3
 import struct
 
 SQLITE_MAGIC = b'SQLite format 3\0'
+NOTE_STYLES = {'comfortable': 0, 'compact': 1}
 SCHEMA = '''
 CREATE TABLE images (id INTEGER PRIMARY KEY,source_type INTEGER,origin TEXT,source TEXT,format TEXT,checksum TEXT,data BLOB,width INTEGER,height INTEGER);
 CREATE TABLE metadata (id INTEGER PRIMARY KEY,scene_rect TEXT,application_version TEXT,view_transform TEXT,thumbnail BLOB,horizontal_scroll INTEGER,vertical_scroll INTEGER,last_save_path TEXT,last_load_path TEXT,last_load_checksum TEXT,saved INTEGER);
@@ -334,15 +335,22 @@ class Scene:
         return i
 
     def note(self,text,*,x=0,y=0,parent=-1,name=None,font='Open Sans',font_size=22,
-             color='#eaeaea',background=None,width=-1,height=-1,rich_text=False):
-        """Create a plain-text note or pass Qt-compatible HTML with rich_text=True."""
+             color='#eaeaea',background=None,width=-1,height=-1,rich_text=False,
+             style='comfortable'):
+        """Create a note with PureRef's 'comfortable' or 'compact' background mode.
+
+        Pass Qt-compatible HTML with rich_text=True. Style changes padding only;
+        the requested transform, fixed size, and HTML are stored unchanged.
+        """
+        if style not in NOTE_STYLES:
+            raise ValueError("Note style must be 'comfortable' or 'compact'")
         if not rich_text:
             text = (f'<html><body style="font-family:{html.escape(font,quote=True)};font-size:{float(font_size)}px;'
                     f'color:{html.escape(color,quote=True)};">'
                     f'<p style="white-space:pre-wrap;margin:0">{html.escape(text)}</p></body></html>')
         i = self._item(name,x,y,parent)
         self._insert('items_notes',id=i,text_color=None,fixed_size=size(width,height),
-                     background_color=background or '',text=text,style=0)
+                     background_color=background or '',text=text,style=NOTE_STYLES[style])
         return i
 
     def group(self,*,name=None,x=0,y=0,parent=-1,locked=True,background=None):

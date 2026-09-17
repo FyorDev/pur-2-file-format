@@ -13,7 +13,7 @@ template canvas, or third-party Python dependencies.
 
 - Embedded PNG/JPEG images with shared resources.
 - Position, rotation, scaling, opacity, and rectangular cropping.
-- Unicode HTML notes and colored backgrounds.
+- Unicode HTML notes, colored backgrounds, and Comfortable/Compact note modes.
 - Groups and nested parent relationships.
 - Solid line and cubic Bézier drawings.
 - File inspection, image extraction, SQLite unpacking, and repacking.
@@ -29,7 +29,7 @@ These features are unsupported or unverified, rather than confirmed working:
 - Other PureRef versions, including 2.0 and the unrelated 1.x format.
 - Linked/external image resources and animation playback.
 - Image filter flags and comments.
-- Alternate note styles and group locking modes.
+- Alternate group locking modes.
 - Dashed strokes, arrowheads, and other non-default drawing options.
 - Negative or large multi-limb BigRational ordering values.
 - Automatic thumbnail generation; new files use an empty preview unless supplied.
@@ -87,6 +87,10 @@ sqlite_bytes = board.database
 board.close()
 ```
 
+Use `scene.note("Compact note", style="compact")` for PureRef's actual Compact
+background mode. The default is `style="comfortable"`; changing the mode preserves
+the supplied position, text, and fixed-size settings.
+
 Image positions locate their original centers; object transforms are relative
 to their parent. `image_data` accepts encoded bytes and explicit dimensions for
 other formats, but only PNG/JPEG are integration-tested. The reader loads files
@@ -104,9 +108,9 @@ Unit tests run without PureRef. Integration tests use the installed application;
 set `PUREREF_EXE` to override its executable path. They use isolated settings and
 synthetic files only.
 
-Verified: eight unit tests, ten byte-exact fixture repacks, identical app-rendered
+Verified: eleven unit tests, ten byte-exact fixture repacks, identical app-rendered
 image canvases, all four item classes, crop equivalence, nested groups, and JPEG
-preservation. Historical fixtures and experiments live in
+preservation, and Compact notes matching an app-created fixture. Historical fixtures and experiments live in
 [`investigation/`](investigation/README.md), with a
 [validation summary](investigation/VALIDATION.json).
 

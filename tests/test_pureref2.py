@@ -69,5 +69,34 @@ class FormatTests(unittest.TestCase):
         with self.assertRaises(FormatError):
             decode_variant(malicious)
 
+    def test_compact_note_matches_app_fixture(self):
+        fixture=PurFile.read(ROOT/'24-compact-note.pur')
+        s=Scene(); s.note('Compact mode probe',style='compact')
+        generated=PurFile(s.to_bytes())
+        self.assertEqual(generated.rows('items_notes'),fixture.rows('items_notes'))
+        self.assertEqual(decode_variant(generated.rows('items')[0]['transform']),
+                         decode_variant(fixture.rows('items')[0]['transform']))
+        fixture.close(); generated.close()
+
+    def test_note_mode_changes_only_style(self):
+        a=Scene(); a.note('<b>Padding</b>',x=23,y=-45,width=180,height=90,
+                         rich_text=True)
+        b=Scene(); b.note('<b>Padding</b>',x=23,y=-45,width=180,height=90,
+                         rich_text=True,style='compact')
+        default=PurFile(a.to_bytes()); compact=PurFile(b.to_bytes())
+        self.assertEqual(default.rows('items'),compact.rows('items'))
+        note=default.rows('items_notes')[0]
+        self.assertEqual(note['style'],0)
+        note['style']=1
+        self.assertEqual(note,compact.rows('items_notes')[0])
+        default.close(); compact.close()
+
+    def test_invalid_note_mode_does_not_add_item(self):
+        s=Scene()
+        with self.assertRaises(ValueError):
+            s.note('test',style='unknown')
+        self.assertEqual(s.next_id,0)
+        self.assertEqual(s.connection.execute('SELECT count(*) FROM items').fetchone()[0],0)
+
 if __name__ == '__main__':
     unittest.main()

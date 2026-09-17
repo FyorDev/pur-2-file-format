@@ -9,6 +9,8 @@ are development evidence, not inputs required by the library or writer.
 - `20-note-only.pur`, `21-group.pur`, `22-drawing.pur`, `23-line.pur`:
   authentic UI-generated note, group, and drawing fixtures.
 - `20-note.pur`: the evolving canvas, eventually containing the combined tests.
+- `24-compact-note.pur`: saved after choosing Compact in PureRef's note toolbar;
+  compared with its source note, only `items_notes.style` changed (0 to 1).
 - Tiny PNG/JPEG files: synthetic image inputs for regression tests.
 - `EVIDENCE.json`: hashes of the original experiments and installed app binary.
 - `binary-relevant-strings.txt`, `command-help.txt`, and intermediate renders:

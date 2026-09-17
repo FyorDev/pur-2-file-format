@@ -4,6 +4,7 @@
   "mixed_canvas_all_item_classes": true,
   "crop_render_matches_separate_image": true,
   "nested_groups_and_jpeg": true,
+  "compact_note_render_matches_app_fixture": true,
   "application_version": "2.1.3",
-  "unit_tests_passed": 8
+  "unit_tests_passed": 11
 }

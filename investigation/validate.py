@@ -99,6 +99,24 @@ def validate():
     assert nested.rows('images')[0]['data'] == (ROOT/'red.jpg').read_bytes()
     assert nested.rows('items')[2]['parent'] == child
     results['nested_groups_and_jpeg'] = True
+
+    # The app's actual Compact selector changes only items_notes.style to 1.
+    # Match view metadata so the comparison tests note rendering, not framing.
+    compact_ref = PurFile.read(ROOT/'24-compact-note.pur')
+    s = Scene()
+    s.note('Compact mode probe',style='compact')
+    s.to_bytes()
+    metadata = compact_ref.rows('metadata')[0]
+    framing = ('scene_rect','view_transform','horizontal_scroll','vertical_scroll')
+    s.connection.execute('UPDATE metadata SET '+','.join(k+'=?' for k in framing)+' WHERE id=0',
+                         [metadata[k] for k in framing])
+    s.connection.commit()
+    (out/'compact.pur').write_bytes(wrap(s.connection.serialize()))
+    compact_png,compact_saved = app_render('compact',out/'compact.pur')
+    reference_png,_ = app_render('compact-reference',ROOT/'24-compact-note.pur')
+    assert compact_png.read_bytes() == reference_png.read_bytes()
+    assert compact_saved.rows('items_notes')[0]['style'] == 1
+    results['compact_note_render_matches_app_fixture'] = True
     (out/'results.json').write_text(json.dumps(results,indent=2))
     print(json.dumps({'directory':str(out),**{k:v for k,v in results.items() if k!='mixed_inspection'}},indent=2))
     return out

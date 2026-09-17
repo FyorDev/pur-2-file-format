@@ -319,11 +319,20 @@ small `<html><body><p>...</p></body></html>` document also works.
 | `text_color` | NULL in app-generated test note |
 | `fixed_size` | QVariant QSizeF; `(-1,-1)` means automatic sizing |
 | `background_color` | Empty string for default; `#AARRGGBB` accepted |
-| `style` | 0 in the tested ordinary note |
+| `style` | 0 = Comfortable (default), 1 = Compact |
 
 The note writer preserves Unicode, line breaks, and HTML escaping. A generated
 note containing Greek and Chinese characters was rendered and saved successfully.
-Additional note styles and interaction with `text_color` remain untested.
+Switching the actual PureRef note toolbar from Comfortable to Compact changed
+only `items_notes.style` from 0 to 1. The common item transform, HTML, background
+color, and `fixed_size` were unchanged. Compact uses the app's smaller note
+background/padding; no HTML or coordinate workaround is needed. The writer accepts
+`style="comfortable"` (default) or `style="compact"` and rejects other values.
+The parser already exposes the numeric `style` field unchanged, including unknown
+values. `investigation/24-compact-note.pur` is the app-created fixture; a freshly
+generated compact note renders byte-identically when given the same view framing
+and retains style 1 after an app resave. Interaction with `text_color` remains
+untested.
 
 ## 8. Groups
 
@@ -402,6 +411,8 @@ provided by our initial file; callers can supply JPEG thumbnail bytes themselves
    four item classes, a rotated/scaled transparent image, Unicode note, colors,
    shared image resources, and two drawing strokes.
 5. Crop render equivalence and nested groups with JPEG preservation.
+6. Compact note render equivalence to the app's actual Compact mode and style
+   preservation after re-saving.
 
 `tests/test_pureref2.py` also exercises malformed/truncated headers, checksum corruption,
 known binary fixtures, bounds-checked paths, deduplication, and new databases.
