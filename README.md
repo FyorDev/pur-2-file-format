@@ -3,6 +3,8 @@
 An independent parser, format specification, and from-scratch writer for PureRef
 2.1 `.pur` files. Verified against **PureRef 2.1.3 on Windows**.
 
+For the PureRef 1.x format, see [FyorDev's PureRef-format](https://github.com/FyorDev/PureRef-format).
+
 ![Screenshot of the generated demo canvas in PureRef](examples/standalone-demo.png)
 
 The [demo canvas](examples/standalone-demo.pur) was created entirely in Python,
