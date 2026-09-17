@@ -59,10 +59,6 @@
       "bytes": 46605,
       "sha256": "699c3feeadcf6421d542f0f1dde8eb8d1393e7a990ea678e60fa153c2a31ba3a"
     },
-    "../examples/standalone-demo.pur": {
-      "bytes": 98412,
-      "sha256": "e6e0913c8faf396454716c21009d7e32cdb308e7d9cec9c9926bea050a91826e"
-    },
     "24-compact-note.pur": {
       "bytes": 45542,
       "sha256": "e9b9c61aa29cc153931ba6da9ae0e042d75f80542220f9a8d6398ae8eb68a787"
