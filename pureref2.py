@@ -15,6 +15,22 @@ import struct
 
 SQLITE_MAGIC = b'SQLite format 3\0'
 NOTE_STYLES = {'comfortable': 0, 'compact': 1}
+# Envelope layouts: 2.0 has no thumbnail field, 2.1 ends with a thumbnail QByteArray.
+ENVELOPE_VERSIONS = ('2.0', '2.1')
+# images.source_type
+SOURCE_EMBEDDED, SOURCE_LINKED = 1, 2
+# items_images.flags (GraphicsImageItem::RenderFlag)
+RENDER_SMOOTH, RENDER_GRAYSCALE = 1, 2
+# items_images.playback_state
+PLAYBACK_STATIC, PLAYBACK_STOPPED, PLAYBACK_PAUSED, PLAYBACK_PLAYING = 0, 1, 2, 3
+# items_groups.lock_mode
+LOCK_OPEN, LOCK_CLOSED = 0, 1
+# The trailing int of a serialized stroke, GraphicsDrawItem::Stroke's style.
+STROKE_ROUND, STROKE_DASHED, STROKE_FLAT = 0, 1, 2
+# A stroke starts with a signed-char version. From 100 on, the style int follows
+# the stroke's point; below that the byte is the start of the QColor instead,
+# which is how strokes looked before the version existed.
+STROKE_VERSION, STROKE_LEGACY_LIMIT = 100, 99
 SCHEMA = '''
 CREATE TABLE images (id INTEGER PRIMARY KEY,source_type INTEGER,origin TEXT,source TEXT,format TEXT,checksum TEXT,data BLOB,width INTEGER,height INTEGER);
 CREATE TABLE metadata (id INTEGER PRIMARY KEY,scene_rect TEXT,application_version TEXT,view_transform TEXT,thumbnail BLOB,horizontal_scroll INTEGER,vertical_scroll INTEGER,last_save_path TEXT,last_load_path TEXT,last_load_checksum TEXT,saved INTEGER);
@@ -70,13 +86,13 @@ def unwrap(data):
     """Return (header, reconstructed SQLite bytes), without touching disk."""
     r = Reader(data)
     version = r.string()
-    if version != '2.1':
-        raise FormatError(f'Unsupported envelope version {version!r}; only 2.1 is verified')
+    if version not in ENVELOPE_VERSIONS:
+        raise FormatError(f'Unsupported envelope version {version!r}; verified: {ENVELOPE_VERSIONS}')
     reserved = r.u32()
     offset = r.unpack('Q')[0]
     app_version, token = r.string(), r.string()
     checksum_start = r.pos
-    thumbnail = r.bytearray()
+    thumbnail = r.bytearray() if version != '2.0' else b''
     size = r.pos
     if offset < size or offset+size != len(data):
         raise FormatError('Invalid displacement offset/header length')
@@ -92,19 +108,27 @@ def unwrap(data):
                 checksum_valid=hashlib.md5(data[checksum_start:]).hexdigest()==token,
                 checksum_start=checksum_start, thumbnail=thumbnail, header_size=size), db
 
-def wrap(db, *, application_version='2.1.3', save_token=None, thumbnail=b'', reserved=0):
+def wrap(db, *, application_version='2.1.3', save_token=None, thumbnail=b'', reserved=0,
+         format_version='2.1'):
     if not db.startswith(SQLITE_MAGIC):
         raise FormatError('Expected SQLite database bytes')
+    if format_version not in ENVELOPE_VERSIONS:
+        raise ValueError(f'Unsupported envelope version {format_version!r}')
     if save_token is not None and (len(save_token)!=32 or any(c not in '0123456789abcdef' for c in save_token)):
         raise ValueError('Checksum must be 32 lowercase hexadecimal characters')
-    header = (qstring('2.1') + struct.pack('>IQ', reserved, len(db))
-              + qstring(application_version) + qstring('0'*32)
-              + qbytes(thumbnail))
+    if format_version == '2.0':
+        if thumbnail:
+            raise ValueError('The 2.0 envelope has no thumbnail field')
+        preview = b''
+    else:
+        preview = qbytes(thumbnail)
+    header = (qstring(format_version) + struct.pack('>IQ', reserved, len(db))
+              + qstring(application_version) + qstring('0'*32) + preview)
     if len(header) > len(db):
         raise FormatError('Thumbnail/header exceeds database size')
-    tail = qbytes(thumbnail) + db[len(header):] + db[:len(header)]
+    tail = preview + db[len(header):] + db[:len(header)]
     checksum = save_token or hashlib.md5(tail).hexdigest()
-    return (qstring('2.1') + struct.pack('>IQ',reserved,len(db))
+    return (qstring(format_version) + struct.pack('>IQ',reserved,len(db))
             + qstring(application_version) + qstring(checksum) + tail)
 
 def binary(value):
@@ -125,12 +149,20 @@ def rect(x,y,w,h):
 def size(w,h):
     return variant(22,struct.pack('>2d',w,h))
 
+def big_integer(value):
+    """sign word, 64-bit block count, then 32-bit blocks, least significant first."""
+    magnitude, blocks = abs(value), []
+    while magnitude:
+        blocks.append(magnitude & 0xffffffff)
+        magnitude >>= 32
+    sign = 0 if value == 0 else (1 if value > 0 else 0xffffffff)
+    return struct.pack('>IQ',sign,len(blocks)) + b''.join(struct.pack('>I',b) for b in blocks)
+
 def rational(numerator, denominator=1):
-    """Encode positive 32-bit integer rational values used for sibling ordering."""
-    if not 0 < numerator < 2**32 or not 0 < denominator < 2**32:
-        raise ValueError('Writer supports positive 32-bit rational components')
-    payload = struct.pack('>8I',1,0,1,numerator,1,0,1,denominator)
-    return variant(1024,payload,'BigRational')
+    """Encode the sibling-ordering rational; any integer numerator, positive denominator."""
+    if denominator <= 0:
+        raise ValueError('Rational denominator must be positive')
+    return variant(1024,big_integer(numerator)+big_integer(denominator),'BigRational')
 
 def painter_path(elements, cstart=0, fill_rule=0):
     """elements: (Qt element type, x, y); 0 move, 1 line, 2 curve, 3 curve data."""
@@ -145,9 +177,48 @@ def bounds(w,h):
     return painter_path([(0,-w/2,-h/2),(1,w/2,-h/2),(1,w/2,h/2),
                          (1,-w/2,h/2),(1,-w/2,-h/2)])
 
+def webp_size(data):
+    chunk = data[12:16]
+    if chunk == b'VP8X' and len(data)>=30:
+        w,h = int.from_bytes(data[24:27],'little'),int.from_bytes(data[27:30],'little')
+        return w+1,h+1
+    if chunk == b'VP8 ' and len(data)>=30 and data[23:26] == b'\x9d\x01\x2a':
+        w,h = struct.unpack('<HH',data[26:30])
+        return w & 0x3fff,h & 0x3fff
+    if chunk == b'VP8L' and len(data)>=25:
+        bits = int.from_bytes(data[21:25],'little')
+        return (bits & 0x3fff)+1,((bits>>14) & 0x3fff)+1
+    raise ValueError('Unsupported WebP variant; pass dimensions to image_data')
+
+def tiff_size(data):
+    order = '<' if data[:2] == b'II' else '>'
+    offset = struct.unpack(order+'I',data[4:8])[0]
+    if offset+2 > len(data):
+        raise ValueError('Truncated TIFF directory')
+    size = {}
+    for i in range(struct.unpack(order+'H',data[offset:offset+2])[0]):
+        entry = offset+2+12*i
+        if entry+12 > len(data):
+            break
+        tag,kind = struct.unpack(order+'HH',data[entry:entry+4])
+        if tag in (256,257):
+            fmt = order+('H' if kind == 3 else 'I')
+            size[tag] = struct.unpack(fmt,data[entry+8:entry+8+struct.calcsize(fmt)])[0]
+    if 256 not in size or 257 not in size:
+        raise ValueError('TIFF lacks width/height tags; pass dimensions to image_data')
+    return size[256],size[257]
+
 def image_info(data):
     if data.startswith(b'\x89PNG\r\n\x1a\n') and len(data)>=33:
         return 'PNG',*struct.unpack('>II',data[16:24])
+    if data[:6] in (b'GIF87a',b'GIF89a') and len(data)>=10:
+        return 'GIF',*struct.unpack('<HH',data[6:10])
+    if data.startswith(b'BM') and len(data)>=26:
+        return 'BMP',*(abs(v) for v in struct.unpack('<ii',data[18:26]))
+    if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        return 'WEBP',*webp_size(data)
+    if data[:4] in (b'II*\0',b'MM\0*'):
+        return 'TIFF',*tiff_size(data)
     if data.startswith(b'\xff\xd8'):
         pos = 2
         sof = {0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf}
@@ -173,7 +244,16 @@ def image_info(data):
                 return 'JPG',w,h
             pos += length
         raise ValueError('JPEG lacks a supported size header')
-    raise ValueError('Convenience writer supports PNG and JPEG; use image_data for other formats')
+    raise ValueError('Unrecognized image header; use image_data with explicit dimensions')
+
+def read_big_integer(r):
+    sign, count = r.unpack('IQ')
+    if sign not in (0,1,0xffffffff) or count > (len(r.data)-r.pos)//4:
+        raise FormatError('Invalid BigInteger sign or block count')
+    value = 0
+    for shift in range(count):
+        value |= r.u32() << (32*shift)
+    return -value if sign == 0xffffffff else value
 
 def read_path(r):
     count = r.u32()
@@ -184,18 +264,26 @@ def read_path(r):
         result['cstart'],result['fill_rule'] = r.unpack('ii')
     return result
 
-def strokes(paths, rgba=(46,132,170,200), width=5):
-    """Solid strokes. Each path is a sequence of (element type, x, y)."""
+def strokes(paths, rgba=(46,132,170,200), width=5, style=STROKE_ROUND, *, dashed=False,
+            point=(0.0,0.0)):
+    """Strokes. Each path is a sequence of (element type, x, y).
+
+    style is STROKE_ROUND (rounded ends, what PureRef writes), STROKE_DASHED or
+    STROKE_FLAT (square ends). `point` is transient state the application uses
+    while a stroke is being drawn; saved files always carry (0, 0).
+    """
     red,green,blue,alpha = rgba
     if any(not 0 <= c <= 255 for c in rgba) or width <= 0:
         raise ValueError('Invalid RGBA or stroke width')
+    if dashed:
+        style = STROKE_DASHED
     payload = struct.pack('>I',len(paths))
     for elements in paths:
-        # Observed stroke version/tag 100; QColor RGB with 16-bit channels.
-        payload += struct.pack('>BB5Hd',100,1,alpha*257,red*257,green*257,blue*257,0,width)
+        # version, then QColor as RGB with 16-bit channels
+        payload += struct.pack('>2b5Hd',STROKE_VERSION,1,alpha*257,red*257,green*257,blue*257,0,width)
         p = binary(painter_path(elements))
         r = Reader(p); r.unpack('IB'); r.bytearray()
-        payload += p[r.pos:] + bytes(20)
+        payload += p[r.pos:] + struct.pack('>2di',*point,style)
     return variant(1024,payload,'QList<GraphicsDrawItem::Stroke>')
 
 def decode_variant(value):
@@ -215,24 +303,30 @@ def decode_variant(value):
         result.update(read_path(r))
     elif result.get('type_name') == 'QList<GraphicsDrawItem::Stroke>':
         count = r.u32()
-        if count > len(raw)//44:
+        if count > len(raw)//43:
             raise FormatError('Invalid stroke count')
         result['strokes'] = []
         for _ in range(count):
-            tag, color_spec = r.unpack('BB')
-            if tag != 100 or color_spec != 1:
-                raise FormatError('Unsupported stroke tag/color representation')
+            version = r.unpack('b')[0]
+            if version <= STROKE_LEGACY_LIMIT:
+                r.pos -= 1          # not a version: the QColor starts at this byte
+            color_spec = r.unpack('b')[0]
+            if color_spec != 1:
+                raise FormatError('Stroke color is not stored as RGB')
             alpha,red,green,blue,pad = r.unpack('5H')
             width = r.unpack('d')[0]
-            stroke = dict(tag=tag,color_spec=color_spec,rgba16=[red,green,blue,alpha],color_pad=pad,width=width)
+            stroke = dict(version=version,color_spec=color_spec,
+                          rgba16=[red,green,blue,alpha],color_pad=pad,width=width)
             stroke['path'] = read_path(r)
-            stroke['options_hex'] = r.take(20).hex()
+            stroke['point'] = list(r.unpack('2d'))
+            stroke['style'] = r.unpack('i')[0] if version > STROKE_LEGACY_LIMIT else STROKE_ROUND
+            stroke['dashed'] = stroke['style'] == STROKE_DASHED
             result['strokes'].append(stroke)
-    elif result.get('type_name') == 'BigRational' and len(raw)-r.pos == 32:
-        values = r.unpack('8I')
-        result['words'] = list(values)
-        if values[:3] == (1,0,1) and values[4:7] == (1,0,1):
-            result['numerator'],result['denominator'] = values[3],values[7]
+    elif result.get('type_name') == 'BigRational':
+        try:
+            result['numerator'],result['denominator'] = read_big_integer(r),read_big_integer(r)
+        except FormatError:
+            result['payload_hex'] = raw[5:].hex()
     else:
         result['payload_hex'] = r.take(len(raw)-r.pos).hex()
     if r.pos < len(raw):
@@ -317,18 +411,42 @@ class Scene:
         options.setdefault('name',path.stem)
         return self.image_data(data,w,h,format=fmt,source=str(path.resolve()).replace('\\','/'),**options)
 
+    def image_link(self,path,**options):
+        """Reference an image on disk instead of embedding it (source_type 2).
+
+        PureRef resolves the path at load time, falling back to the .pur's own
+        folder and subfolders, so linked canvases stay small but need their files.
+        """
+        path = Path(path)
+        fmt,w,h = image_info(path.read_bytes())
+        options.setdefault('name',path.stem)
+        return self.image_data(None,w,h,format=fmt,source=str(path.resolve()).replace('\\','/'),**options)
+
     def image_data(self,data,w,h,*,format='PNG',source='',x=0,y=0,name=None,parent=-1,
-                   scale_x=1,scale_y=1,rotation=0,opacity=1,clip=None,comment=None):
-        """Embed encoded image bytes; clip=(left,top,width,height) in original pixels."""
+                   scale_x=1,scale_y=1,rotation=0,opacity=1,clip=None,comment=None,
+                   flags=RENDER_SMOOTH,grayscale=False,playback_state=PLAYBACK_STATIC,
+                   playback_frame=0,playback_speed=1.0):
+        """Embed encoded image bytes; clip=(left,top,width,height) in original pixels.
+
+        data=None stores a linked resource that PureRef loads from `source`.
+        flags is a RenderFlag bitmask: RENDER_SMOOTH (bilinear) | RENDER_GRAYSCALE.
+        """
         self._validate_comment(comment)
         if w<=0 or h<=0:
             raise ValueError('Image dimensions must be positive')
-        checksum = hashlib.md5(data).hexdigest()
-        if checksum not in self.resources:
+        if data is None and not source:
+            raise ValueError('A linked image needs a source path')
+        if grayscale:
+            flags |= RENDER_GRAYSCALE
+        checksum = hashlib.md5(data).hexdigest() if data is not None else None
+        key = checksum or ('linked',source)
+        if key not in self.resources:
             rid = len(self.resources)
-            self.resources[checksum] = rid
-            self._insert('images',id=rid,source_type=1,origin=source,
-                         source=source,format=format,checksum=checksum,data=data,width=w,height=h)
+            self.resources[key] = rid
+            self._insert('images',id=rid,
+                         source_type=SOURCE_EMBEDDED if data is not None else SOURCE_LINKED,
+                         origin=source,source=source,format=format,checksum=checksum,
+                         data=data,width=w,height=h)
         i = self._item(name,x,y,parent,scale_x,scale_y,rotation,opacity,comment=comment)
         image_bounds = bounds(w,h)
         if clip is not None:
@@ -338,13 +456,14 @@ class Scene:
             left -= w/2; top -= h/2
             image_bounds = painter_path([(0,left,top),(1,left+cw,top),(1,left+cw,top+ch),
                                          (1,left,top+ch),(1,left,top)])
-        self._insert('items_images',id=i,image=self.resources[checksum],playback_speed=1.0,playback_state=0,
-                     image_transform=transform(-w/2,-h/2),image_bounds=image_bounds,playback_frame=0,flags=1)
+        self._insert('items_images',id=i,image=self.resources[key],playback_speed=float(playback_speed),
+                     playback_state=playback_state,image_transform=transform(-w/2,-h/2),
+                     image_bounds=image_bounds,playback_frame=playback_frame,flags=flags)
         return i
 
     def note(self,text,*,x=0,y=0,parent=-1,name=None,font='Open Sans',font_size=22,
              color='#eaeaea',background=None,width=-1,height=-1,rich_text=False,
-             style='comfortable',comment=None):
+             style='comfortable',text_color=None,comment=None):
         """Create a note with PureRef's 'comfortable' or 'compact' background mode.
 
         Pass Qt-compatible HTML with rich_text=True. Style changes padding only;
@@ -357,32 +476,37 @@ class Scene:
                     f'color:{html.escape(color,quote=True)};">'
                     f'<p style="white-space:pre-wrap;margin:0">{html.escape(text)}</p></body></html>')
         i = self._item(name,x,y,parent,comment=comment)
-        self._insert('items_notes',id=i,text_color=None,fixed_size=size(width,height),
+        self._insert('items_notes',id=i,text_color=text_color,fixed_size=size(width,height),
                      background_color=background or '',text=text,style=NOTE_STYLES[style])
         return i
 
-    def group(self,*,name=None,x=0,y=0,parent=-1,locked=True,background=None,comment=None):
+    def group(self,*,name=None,x=0,y=0,parent=-1,locked=True,background=None,lock_mode=None,
+              comment=None):
+        """lock_mode overrides `locked`: LOCK_OPEN or LOCK_CLOSED (the app default)."""
         i = self._item(name,x,y,parent,comment=comment)
-        self._insert('items_groups',id=i,background_color=background,lock_mode=int(locked))
+        self._insert('items_groups',id=i,background_color=background,
+                     lock_mode=int(locked) if lock_mode is None else int(lock_mode))
         return i
 
     def drawing(self,paths,*,x=0,y=0,parent=-1,name=None,rgba=(46,132,170,200),width=5,
-                comment=None):
+                style=STROKE_ROUND,dashed=False,comment=None):
         i = self._item(name,x,y,parent,comment=comment)
-        self._insert('items_drawings',id=i,strokes=strokes(paths,rgba,width))
+        self._insert('items_drawings',id=i,strokes=strokes(paths,rgba,width,style,dashed=dashed))
         return i
 
-    def to_bytes(self,thumbnail=b''):
+    def to_bytes(self,thumbnail=b'',format_version='2.1',application_version='2.1.3'):
+        """Serialize the scene. format_version='2.0' omits the header thumbnail field."""
         self.connection.execute('DELETE FROM metadata')
-        self._insert('metadata',id=0,application_version='2.1.3',view_transform=transform(),
+        self._insert('metadata',id=0,application_version=application_version,view_transform=transform(),
                      horizontal_scroll=0,vertical_scroll=0,thumbnail=thumbnail,saved=1)
         self.connection.commit()
-        return wrap(self.connection.serialize(),thumbnail=thumbnail)
+        return wrap(self.connection.serialize(),thumbnail=b'' if format_version=='2.0' else thumbnail,
+                    format_version=format_version,application_version=application_version)
 
-    def write(self,path,thumbnail=b''):
+    def write(self,path,thumbnail=b'',**options):
         """Refuse overwrites by default, including user canvases."""
         with Path(path).open('xb') as f:
-            f.write(self.to_bytes(thumbnail))
+            f.write(self.to_bytes(thumbnail,**options))
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

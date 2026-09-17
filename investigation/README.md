@@ -12,6 +12,16 @@ are development evidence, not inputs required by the library or writer.
 - `24-compact-note.pur`: saved after choosing Compact in PureRef's note toolbar;
   compared with its source note, only `items_notes.style` changed (0 to 1).
 - Tiny PNG/JPEG files: synthetic image inputs for regression tests.
+- `30-app-2.0.3.pur`: created by PureRef 2.0.3 on Linux; shows that 2.0.3 writes
+  `2.1` envelopes and a differently ordered but equivalent schema.
+- `31-envelope-2.0.pur`: the reconstructed thumbnail-less `2.0` envelope, the one
+  candidate layout of four that 2.0.3 loads without warnings.
+- `32-rational-probe.pur`: crafted sibling orders `-3, 0, 3, 7/2, 5, 2**32`;
+  `exportImages` numbered them in exactly that order.
+- `33-dashed-app-2.0.3.pur`: a generated solid/dashed stroke pair after an app
+  re-save, which re-serialized the dash flag as `options[19]`.
+- `34-animation-2.0.3.pur`, `35-linked-2.0.3.pur`, `anim.gif`: app-created
+  animation and linked-resource (`Embed Local Files=false`) fixtures.
 - `EVIDENCE.json`: hashes of the original experiments and installed app binary.
 - `binary-relevant-strings.txt`, `command-help.txt`, and intermediate renders:
   historical investigation material.
@@ -32,7 +42,10 @@ python -m investigation.validate
 ```
 
 The integration suite requires PureRef. Set `PUREREF_EXE` if it is not installed
-at `C:\Program Files\PureRef\PureRef.exe`. It creates fresh `validation-*`
+at `C:\Program Files\PureRef\PureRef.exe`; on Linux it also needs an X display
+(`DISPLAY=:0`, since the AppImage ships no `offscreen` Qt plugin) and it tolerates
+the AppImage's font-directory warning. It passes against 2.1.3 on Windows and
+2.0.3 on Linux. It creates fresh `validation-*`
 directories with isolated settings; it does not read personal canvases.
 
 `python -m investigation.make_fixtures` regenerates the CLI-created fixtures;

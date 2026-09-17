@@ -1,9 +1,10 @@
-# PureRef 2.1 `.pur` format
+# PureRef 2.x `.pur` format
 
-Reverse engineered from **PureRef 2.1.3 for Windows**, using synthetic canvases,
-controlled CLI/UI saves, binary inspection, and independent files loaded back into
-the app. No personal canvases were opened or used as input. Research date:
-2026-09-17.
+Reverse engineered from **PureRef 2.1.3 for Windows** and **PureRef 2.0.3 for Linux**, using
+synthetic canvases, controlled CLI/UI saves, binary inspection, and independent files loaded back
+into the app. Fields that are invisible in a file but visible on screen were resolved by writing
+crafted values, rendering them with `exportScene`/`exportImages`, and re-saving. No personal
+canvases were opened or used as input. Research dates: 2026-09-17.
 
 This describes enough of the format to implement a writer **from scratch** for
 embedded images, affine transforms, opacity, rectangular crops, HTML notes,
@@ -11,9 +12,12 @@ nested groups, and solid vector drawings. `pureref2.py` is an independent Python
 standard-library implementation. It does not need PureRef, Qt, or a template to
 create files. PureRef is used only for the integration tests.
 
-Scope: envelope version `2.1`, database schema version `200101`, as emitted by
-application `2.1.3`. Other 2.x releases have not been tested. In particular, do not
-assume this reader accepts 2.0 files or the unrelated 1.x binary format.
+Scope: envelope versions `2.0` and `2.1`, database schema version `200101`, as emitted by
+applications `2.1.3` and `2.0.3`. The envelope version is a *format* version, not the
+application version: PureRef **2.0.3 writes `2.1` envelopes**, and its files are read by this
+implementation unchanged (`investigation/30-app-2.0.3.pur`). The thumbnail-less `2.0` envelope
+layout in section 2.1 was reconstructed and verified against 2.0.3. The unrelated 1.x binary
+format is not handled; see FyorDev/PureRef-format for that.
 
 ## 1. Container: displaced SQLite prefix
 
@@ -79,6 +83,41 @@ For a typical `2.1.3` file:
 
 Do not hard-code offset 104 when supporting different application-version strings.
 
+### 2.1 The `2.0` envelope has no thumbnail field
+
+Files whose format version is `2.0` end the header at the checksum:
+
+| Field | Encoding |
+|---|---|
+| format version | QString `2.0` |
+| reserved | uint32 `0` |
+| displaced-prefix offset / DB length N | uint64 |
+| application version | QString |
+| file checksum | QString, 32 md5 hex digits |
+
+Verified by loading four candidate layouts in PureRef 2.0.3: this one loads with no warnings and
+an accepted checksum (`investigation/31-envelope-2.0.pur`), while the same header plus an empty
+thumbnail `QByteArray` fails with `Open failed … no such table: metadata`, and dropping the
+reserved word yields "corrupt file". Everything else — displacement, checksum coverage, schema —
+is identical to `2.1`. Writers choose the layout with `wrap(..., format_version='2.0')`.
+
+Envelope acceptance in 2.0.3: `2.0`, `2.1` and `2.2` load (the latter two share this layout);
+`3.0` is refused as "from a newer version of PureRef"; a major version below 2 is handed to the
+legacy 1.x parser; an empty string is reported as corrupt.
+
+The `2.0` layout therefore belongs to the first 2.x releases: 2.0.3 (September 2024) already
+writes `2.1` envelopes with a thumbnail, and PureRef's changelog only adds a *setting* to turn
+thumbnail generation off in 2.1.0 (January 2026), which 2.0.3 does not have. On Windows the
+preview is what the shell thumbnail provider reads, so supplying one gives `.pur` files a
+preview in Explorer.
+
+### 2.2 `PRAGMA user_version` is the compatibility gate
+
+A file whose `user_version` is below the application's (`0`, `100000`) loads and is silently
+migrated, and is re-saved as `200101`; `999999` is refused with "This PureRef file is from a
+newer version of PureRef", quoting `metadata.application_version` as the version. So do not
+advertise a future application version in metadata.
+
 ### Qt strings and arrays
 
 `QString`: uint32 **byte count**, then UTF-16BE bytes. This is not a count of
@@ -128,6 +167,25 @@ PRAGMA user_version = 200101;
 The independent writer uses the same properties. The exact observed schema is
 in `schema.sql`, also embedded in `pureref2.py` as `SCHEMA`. All primary keys are
 INTEGER PRIMARY KEY; the observed schema declares no foreign-key constraints.
+
+The serializer is name-based and migrating (`PRAGMA table_info`, `ALTER TABLE … ADD/DROP COLUMN`),
+which has three practical consequences, all probe-verified:
+
+* **Column order is irrelevant.** 2.0.3 declares every table in a different order than 2.1.3, and
+  either order loads in either application.
+* **Unknown columns and tables load with a warning and are dropped on save**
+  ("Encountered unknown column '%0' in table '%1' it will be dropped on save").
+* **Missing columns are fatal**, not migrated in: a database without `metadata.saved` fails with
+  `Table metadata has no column named saved`. A wrong declared type only warns
+  ("Wrong data type of column 'z'. The database has it set to 'TEXT', expected 'REAL'").
+
+`items.z` and `items.sort_order` are renormalised to `1..n` on every application save:
+
+```sql
+UPDATE items SET sort_order = toBigRational(new_order) FROM(SELECT id AS id2,
+  row_number() OVER(PARTITION by parent ORDER BY sort_order COLLATE collateBigRational)
+  AS new_order FROM items) WHERE id2 == id
+```
 
 | Table | Role |
 |---|---|
@@ -207,17 +265,26 @@ relative to the parent. Image pixel coordinates first pass through
 
 Registered type name: `BigRational\0` (12 bytes including NUL).
 
-Positive 32-bit numerator/denominator values use these eight uint32 words:
+It is two big integers, numerator then denominator, each serialized as:
 
 ```text
-1, 0, 1, numerator, 1, 0, 1, denominator
+uint32 sign          1 = positive, 0 = zero, 0xffffffff = negative
+uint64 block_count
+uint32 blocks[block_count]     least significant block first
 ```
 
-Values `1/1`, `2/1`, `3/1`, and `4/1` were observed. The writer uses positive
-integer order values with denominator 1. These words likely include arbitrary
-precision integer metadata; the full representation for negative values,
-zero, or multiple limbs has **not** been established. Preserve such values as
-raw data. Do not substitute a decimal string for this field.
+The previously documented `1, 0, 1, n, 1, 0, 1, d` word pattern is this encoding with one block
+each. (`Error: BigUnsigned::underflow` in the executable identifies the classic C++ BigInteger
+library, whose sign is `{negative, zero, positive}` and whose magnitude is a block vector.)
+
+Verified by ordering: six images given crafted orders `-3`, `0`, `3`, `7/2`, `5` and `2^32`
+(blocks `[0, 1]`) were exported by `exportImages … %2-%0` in exactly that ascending order
+(`investigation/32-rational-probe.pur`), so signs, zero, fractions and multi-block magnitudes all
+decode as above and blocks are least-significant-first. `exportImages` sequence numbers follow
+`items.sort_order`, which is how sibling ordering becomes observable from the command line.
+
+Because the application renormalises orders to `1..n` per parent on save, files written by PureRef
+itself contain small positive integers; a writer only needs those.
 
 ### QPainterPath
 
@@ -252,7 +319,7 @@ the QVariant/type-name wrapper.
 | `z` | Real-valued stacking coordinate |
 | `opacity` | Real alpha multiplier, tested 0.65 and 1.0 |
 | `locked` | Integer lock flag; ordinary fixtures use 0 |
-| `comment` | Nullable plain-text comment. Unicode and line breaks are preserved. Despite the schema's `INTEGER` declaration, non-null comments have SQLite storage class `text` |
+| `comment` | Nullable plain-text comment, set through the application's comment dialog and shown in the item's tooltip (`GraphicsItem::setComment(const QString&)`). Unicode and line breaks are preserved. Despite the schema's `INTEGER` declaration, non-null comments have SQLite storage class `text`; a comment that looks like a number is stored as one, because of the column's integer affinity |
 
 IDs start at 0 in the synthetic saves. They need not match resource IDs, and a
 parent can have a larger ID than its children. A group operation changed child
@@ -283,7 +350,7 @@ joins to `items` through `id` and references `images.id` through `image`.
 | `playback_speed` | 1.0 for static images |
 | `playback_state` | 0 for static images |
 | `playback_frame` | 0 for static images |
-| `flags` | 1 for ordinary static images |
+| `flags` | `GraphicsImageItem::RenderFlag` bitmask, 1 for ordinary static images |
 
 For an unmodified `w × h` image, `image_transform` translates by `(-w/2,-h/2)`.
 The image item position is therefore its center. Its bounds are a closed
@@ -302,9 +369,67 @@ y1 = y0 + crop_height
 This was verified by comparing app renders of a cropped image with a separately
 created image containing the same crop at the corresponding position.
 
-Linked/external resources, animation states, optimization variants, and the
-other `flags` bits are not yet mapped. `image_data` accepts arbitrary encoded
-bytes and explicit dimensions, but only PNG and JPEG are integration-tested.
+### Render flags
+
+Rendering one 4x4 image at 32x with `flags` 0-3 isolates two bits:
+
+| bit | meaning |
+|---|---|
+| `0x1` | bilinear/smooth sampling (application default; 0 renders nearest-neighbour) |
+| `0x2` | grayscale filter |
+
+No other bit is used. `GraphicsImageItem::setRenderFlags` stores the word as-is and only
+reacts to `0x2` (it forwards grayscale to `Movie::setGrayscale` for animations), and every
+other read of the member masks either `& 0x1` — passed straight to
+`QPainter::setRenderHint(SmoothPixmapTransform, ...)` — or `>> 1 & 0x1`, passed to
+`ImageCache::getMipHandle` as an image option. Bits `0x4` upward, up to `0x7fffffff`, change
+nothing on screen and are preserved verbatim across an application save. The UI calls the two
+that matter "Toggle bilinear sampling" and "Toggle grayscale" (`FilterCommand`).
+
+### Linked resources
+
+With `General_Settings/Embed Local Files=false` (`PureRef -S "Embed Local Files=false"`) the
+application stores resources by reference: `source_type = 2`, `data` and `checksum` NULL, with
+`format`, `width`, `height`, `origin` and `source` still set
+(`investigation/35-linked-2.0.pur`).
+
+The column only ever holds these two values. `SceneSerializerSqlite::storeImage` branches on the
+in-memory `ImageData` source type: zero means embed, and it deduplicates with
+`SELECT id FROM images where checksum=? AND source_type=?` binding **1**; anything else means
+link, and it deduplicates with `where source=? AND source_type=?` binding **2**. There is no
+third value to find, and none for web images in particular: an image dropped from a browser is
+downloaded and embedded with the URL left in `origin`/`source`. The command line cannot load a
+URL at all (`load;http://...` fails with "File does not exist").
+
+When `data` is NULL the image is loaded from `source` regardless of `source_type`. If that path
+is gone, PureRef retries it under the `.pur`'s own folder, dropping leading components one at a
+time - for `/tmp/gone/wanted.png` beside `board.pur` it tries `<folder>/tmp/gone/wanted.png`,
+then `<folder>/gone/wanted.png`, then `<folder>/wanted.png`. On a hit it rewrites both `source`
+and `origin` to the file it found and keeps `source_type = 2`; otherwise the item renders as a
+missing-image placeholder. A copy in an unrelated subfolder is not found, so the search is not a
+recursive scan.
+
+`format` is not normalised: it is the lowercase file extension when the image came from a path
+(`png`, `gif`) and the uppercase detected format otherwise.
+
+### Downscaling on load
+
+`General_Settings/AutoDownscale`, with `AutoDownscaleMaxWidth`/`AutoDownscaleMaxHeight`, reduces
+images as they are imported, and the file then holds only the reduced image: a 3000x2000 PNG
+imported with a 512 limit is stored as 512x342 re-encoded PNG bytes, with `checksum` over those
+bytes and `source`/`origin` still pointing at the original file. Nothing marks the row as
+downscaled. Mip levels are a runtime cache (`OnDiskImageStore`, `ImageCache::MipId`) kept in the
+temporary directory, not in the `.pur`.
+
+### Animation
+
+An animated GIF is stored as ordinary embedded data (`format='gif'`) with
+`playback_state = 3`, `playback_frame = 0`, `playback_speed = 1.0`
+(`investigation/34-animation-2.0.3.pur`). Probing states 0-3 with `playback_frame = 1`: only
+state **2** renders the requested frame, so 2 is "paused at `playback_frame`", 3 is "playing"
+(the application's default), 0 is the static value written for still images. All values survive a
+re-save. `image_info` recognises PNG, JPEG, GIF, BMP, WebP and TIFF headers; `image_data` still
+accepts arbitrary encoded bytes with explicit dimensions.
 
 ## 7. Notes
 
@@ -316,7 +441,7 @@ small `<html><body><p>...</p></body></html>` document also works.
 | Column | Tested representation |
 |---|---|
 | `text` | HTML including font/style and Unicode content |
-| `text_color` | NULL in app-generated test note |
+| `text_color` | Default text colour, used when the HTML carries no colour and overridden by an inline HTML colour; NULL in the app-generated test note |
 | `fixed_size` | QVariant QSizeF; `(-1,-1)` means automatic sizing |
 | `background_color` | Empty string for default; `#AARRGGBB` accepted |
 | `style` | 0 = Comfortable (default), 1 = Compact |
@@ -325,7 +450,8 @@ The note writer preserves Unicode, line breaks, and HTML escaping. A generated
 note containing Greek and Chinese characters was rendered and saved successfully.
 Switching the actual PureRef note toolbar from Comfortable to Compact changed
 only `items_notes.style` from 0 to 1. The common item transform, HTML, background
-color, and `fixed_size` were unchanged. Compact uses the app's smaller note
+color, and `fixed_size` were unchanged. Values 2 and 3 render like Compact and are preserved
+unchanged, so the field is not validated. Compact uses the app's smaller note
 background/padding; no HTML or coordinate workaround is needed. The writer accepts
 `style="comfortable"` (default) or `style="compact"` and rejects other values.
 The parser already exposes the numeric `style` field unchanged, including unknown
@@ -341,22 +467,27 @@ item supplies the group name, transform, parent, and opacity. Children reference
 the group through `items.parent`. Group geometry is derived from its contents.
 
 App-generated groups have `background_color=NULL`, `lock_mode=1`. Explicit
-`#AARRGGBB` backgrounds are accepted and preserved by the app. Two levels of
-nested groups are integration-tested. `lock_mode=1` is the default group-locking
-behavior; other modes are not experimentally mapped.
+`#AARRGGBB` backgrounds are accepted and preserved by the app, with the alpha byte honoured
+(`#80ff0000` renders translucent). Two levels of nested groups are integration-tested.
+`lock_mode` 0, 1 and 2 all load and round-trip with no render difference, since locking only
+affects interaction; the moc metadata exposes `GraphicsGroupItem::LockMode` with a key `Closed`
+and the application default is 1, so 0 = open and 1 = closed (selecting a child selects the
+group). No third mode was observed.
 
 ## 9. Drawings
 
 `items_drawings.strokes` is a special text cell containing a QVariant with type
 ID 1024 and registered name `QList<GraphicsDrawItem::Stroke>\0` (32 bytes).
 
-The tested solid-stroke encoding is:
+The application exports its own stream operators for this type
+(`operator<<(QDataStream&, GraphicsDrawItem::Stroke const&)` and its `>>`
+counterpart), and disassembling them gives the struct exactly:
 
 ```text
 uint32 stroke_count
 repeat stroke_count:
-    uint8 tag                      -- 100 in observed strokes
-    uint8 QColor_spec              -- 1 = RGB
+    int8   version                 -- 100; see below for lower values
+    int8   QColor_spec             -- 1 = RGB
     uint16 alpha                   -- 0..65535
     uint16 red
     uint16 green
@@ -364,19 +495,53 @@ repeat stroke_count:
     uint16 QColor_padding          -- 0
     double width
     QPainterPath payload           -- no QVariant wrapper here
-    byte options[20]               -- all zero for tested solid strokes
+    double point_x                 -- QPointF, (0,0) in every saved file
+    double point_y
+    int32  style                   -- only written when version > 99
 ```
 
-Convert ordinary 8-bit color channels using `channel * 257`. The app's default
-test stroke was RGBA `(46,132,170,200)`, width 5. Independently generated orange
-strokes with width 3 and alpha 255 render correctly. Multiple strokes, straight
-lines, and cubic Béziers were loaded and saved successfully.
+So what earlier looked like 20 opaque option bytes is a `QPointF` followed by an
+`int`. Convert ordinary 8-bit color channels using `channel * 257`. The app's
+default test stroke was RGBA `(46,132,170,200)`, width 5. Independently generated
+orange strokes with width 3 and alpha 255 render correctly. Multiple strokes,
+straight lines, and cubic Béziers were loaded and saved successfully.
 
-The meaning of tag 100 and the 20 trailing option bytes is not established.
-The writer emits the observed solid-style defaults; the parser exposes options
-as hex. Dashed styles, arrowheads, alternative drawing tools, and other tag/color
-encodings require additional fixtures. The reader retains their raw cell data
-even when the specialized decoder cannot interpret them.
+### style
+
+| Value | Rendering |
+|---:|---|
+| 0 | solid with rounded ends — what PureRef writes for freehand and straight strokes alike |
+| 1 | dashed |
+| 2 | solid with flat, square ends |
+| anything else | drawn like 0 |
+
+Renders of the same stroke under each value differ only in these ways, with an
+anchor stroke in the scene to keep the framing identical. Style 2 also widens the
+item's bounding rectangle: `GraphicsDrawItem::strokeStyleExtraBounds` returns an
+empty rectangle unless the style is exactly 2, in which case it expands the
+path's end points by the stroke width — which is what a square cap needs.
+
+An application re-save keeps a style the file already had
+(`investigation/33-dashed-app-2.0.3.pur` came back with 0 and 1), but 2.0.3 and
+2.1.3 only ever *write* 0: their draw toolbar exposes color and width, and even a
+straight line drawn with it (`investigation/23-line.pur`) is style 0.
+
+### version, and strokes written before it existed
+
+The deserializer reads the leading `int8` and, when it is **99 or lower**, seeks
+one byte back and treats that byte as the start of the QColor, skipping the
+trailing `style` int. That is the pre-versioned stroke layout, and it is why
+values like 0, 1, 2 or 200 in that position produce garbage: a QColor spec of 200
+is not RGB. A stroke written the old way (QColor first, no style) loads and
+renders correctly in 2.0.3 and is re-serialized with version 100 and style 0.
+
+`point` is transient state the application keeps while a stroke is being drawn
+(`DrawToolbar::appendSmoothedPoint`); every saved file carries (0, 0), and
+putting a real coordinate or a NaN there changes nothing on screen.
+
+There is no arrowhead in 2.0.3 stroke data: the `Arrow`, `arrowWidth` and
+`arrowHeight` strings in the executable belong to the `PopupArrow` stylesheet,
+and no drawing code reads them.
 
 ## 10. Metadata and thumbnails
 
@@ -387,11 +552,21 @@ One metadata row with `id=0` was observed. Relevant columns:
 - `view_transform`: QVariant QTransform for the view, distinct from item transforms.
 - `horizontal_scroll`, `vertical_scroll`: view scroll positions.
 - `application_version`: ordinary text.
-- `thumbnail`: true BLOB. It matches the header's thumbnail in observed saves.
-- `last_save_path`: directory in the tested saves.
-- `last_load_path`: scene path.
-- `last_load_checksum`: previous file checksum after load/resave.
-- `saved`: 0 in the initial imported fixture, 1 after load/resave.
+- `thumbnail`: true BLOB. It matches the header's thumbnail in observed saves. Application
+  thumbnails are 256x256 RGB JPEG scene renders; a PNG thumbnail is also accepted and loads
+  without warnings, so supplying a preview does not require a JPEG encoder.
+- `last_save_path`: the directory of the last save, which seeds the save dialog.
+- `last_load_path`: the path the scene is associated with; after a save it is that file's own
+  path.
+- `last_load_checksum`: the header checksum of the file the scene was *loaded* from, so PureRef
+  can tell whether the file on disk has changed since. Following a chain of saves, each file
+  carries its predecessor's checksum, and a scene built from imported images carries NULL.
+- `saved`: 0 when the scene had never been associated with a `.pur` before this save (an import
+  that is being saved for the first time), 1 when it was loaded from one.
+- `scene_rect` is the scene's bounding rectangle, including the origin: for a single 64x32 image
+  centred at (100, 200) it is `(0, 0, 132, 216)`. A file converted from 1.x keeps the old 1.x
+  canvas corner in it, which is how a converted scene ends up with a `(-10000, -10000, ...)`
+  rectangle. Leaving the column NULL makes PureRef compute the framing itself.
 
 The writer supplies identity view transform, zero scroll, app version, an empty
 thumbnail, and `saved=1`. It omits scene rectangle and path bookkeeping. This

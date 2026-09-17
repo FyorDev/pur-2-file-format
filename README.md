@@ -1,7 +1,7 @@
 # pur-2-file-format
 
 An independent parser, format specification, and from-scratch writer for PureRef
-2.1 `.pur` files. Verified against **PureRef 2.1.3 on Windows**.
+2.x `.pur` files. Verified against **PureRef 2.1.3 on Windows** and **PureRef 2.0.3 on Linux**.
 
 For the PureRef 1.x format, see [FyorDev's PureRef-format](https://github.com/FyorDev/PureRef-format).
 
@@ -13,12 +13,19 @@ template canvas, or third-party Python dependencies.
 
 ## What works
 
-- Embedded PNG/JPEG images with shared resources.
+- Both container layouts: the `2.1` envelope and the thumbnail-less `2.0` one.
+- Embedded PNG/JPEG/GIF/BMP/WebP/TIFF images with shared resources, and linked
+  (`source_type=2`) resources that PureRef loads from disk.
 - Position, rotation, scaling, opacity, and rectangular cropping.
-- Unicode HTML notes, colored backgrounds, and Comfortable/Compact note modes.
+- Render flags: bilinear sampling and the grayscale filter.
+- Animation playback state, frame, and speed.
+- Unicode HTML notes, default text color, colored backgrounds, and
+  Comfortable/Compact note modes.
 - Multiline Unicode comments on images, notes, groups, and drawings.
-- Groups and nested parent relationships.
-- Solid line and cubic Bézier drawings.
+- Groups, nested parent relationships, and group lock modes.
+- Round, dashed and flat-capped line and cubic Bézier drawings.
+- Sibling ordering for any `BigRational` value, including negative, zero,
+  fractional, and multi-block magnitudes.
 - File inspection, image extraction, SQLite unpacking, and repacking.
 
 The [format specification](FORMAT.md) documents the displaced SQLite container,
@@ -29,13 +36,15 @@ behind each interpretation.
 
 These features are unsupported or unverified, rather than confirmed working:
 
-- Other PureRef versions, including 2.0 and the unrelated 1.x format.
-- Linked/external image resources and animation playback.
-- Image filter flags.
-- Alternate group locking modes.
-- Dashed strokes, arrowheads, and other non-default drawing options.
-- Negative or large multi-limb BigRational ordering values.
+- The unrelated 1.x binary format (see
+  [FyorDev/PureRef-format](https://github.com/FyorDev/PureRef-format)); PureRef
+  itself converts 1.x canvases on load and save.
+- PureRef versions other than 2.0.3 and 2.1.3, and web/URL image sources, which
+  the command line cannot load.
+- `items_images.flags` bits above `0x2`: they round-trip, and no code in 2.0.3
+  reads them.
 - Automatic thumbnail generation; new files use an empty preview unless supplied.
+  App previews are 256x256 JPEG scene renders, and PNG previews are accepted.
 
 The [specification](FORMAT.md) distinguishes tested behavior from fields whose
 meaning still needs investigation.
@@ -81,8 +90,10 @@ scene.image("drawing.png", parent=group, x=250, y=0,
             clip=(0, 0, 100, 100))
 scene.note("Unicode notes: Ω 中", parent=group, x=0, y=-100)
 scene.drawing([[(0, 0, 120), (1, 300, 120)]], parent=group,
-              rgba=(255, 100, 20, 255), width=4)
-scene.write("generated.pur")
+              rgba=(255, 100, 20, 255), width=4, dashed=True)
+scene.image_link("on-disk.png", parent=group, x=500, grayscale=True)
+scene.write("generated.pur")               # or format_version="2.0"
+
 
 board = PurFile.read("generated.pur")
 print(board.inspect())
@@ -109,10 +120,11 @@ python -m investigation.validate
 ```
 
 Unit tests run without PureRef. Integration tests use the installed application;
-set `PUREREF_EXE` to override its executable path. They use isolated settings and
+set `PUREREF_EXE` to override its executable path, and on Linux run them on an X
+display (`DISPLAY=:0 PUREREF_EXE=/usr/bin/PureRef python -m investigation.validate`). They use isolated settings and
 synthetic files only.
 
 ## Scope
 
-This is an experimental implementation of the tested **2.1.3 subset**, not a
-complete mapping of all 2.x features. This project is independent of PureRef.
+This is an experimental implementation of the subset tested against **2.1.3 and
+2.0.3**, not a complete mapping of all 2.x features. This project is independent of PureRef.

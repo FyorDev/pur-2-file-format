@@ -120,5 +120,125 @@ class FormatTests(unittest.TestCase):
             s.image(ROOT/'red.png',comment=123)
         self.assertEqual(s.resources,{})
 
+class Version20Tests(unittest.TestCase):
+    """PureRef 2.0.3 writes 2.1 envelopes; early 2.0.x wrote a thumbnail-less one."""
+
+    def test_app_2_0_3_file_reads(self):
+        f = PurFile.read(ROOT/'30-app-2.0.3.pur')
+        self.assertTrue(f.header['checksum_valid'])
+        self.assertEqual(f.header['format_version'],'2.1')
+        self.assertEqual(f.header['application_version'],'2.0.3')
+        self.assertEqual(decode_variant(f.rows('items')[0]['transform'])['value'][6:8],[100,200])
+        f.close()
+
+    def test_envelope_2_0_has_no_thumbnail_field(self):
+        data = (ROOT/'31-envelope-2.0.pur').read_bytes()
+        header,db = unwrap(data)
+        self.assertEqual(header['format_version'],'2.0')
+        self.assertTrue(header['checksum_valid'])
+        self.assertEqual(header['thumbnail'],b'')
+        self.assertEqual(header['header_size'],header['checksum_start']+0)
+        self.assertEqual(wrap(db,application_version=header['application_version'],
+                              format_version='2.0'),data)
+
+    def test_2_0_envelope_rejects_thumbnail(self):
+        db = (ROOT/'31-envelope-2.0.pur').read_bytes()
+        with self.assertRaises(ValueError):
+            wrap(unwrap(db)[1],thumbnail=b'\xff\xd8ignored',format_version='2.0')
+
+class BigRationalTests(unittest.TestCase):
+    def test_round_trip_signs_and_limbs(self):
+        for numerator,denominator in [(1,1),(0,1),(-3,1),(7,2),(2**32,1),(-(2**70)-5,3)]:
+            with self.subTest(value=(numerator,denominator)):
+                decoded = decode_variant(rational(numerator,denominator))
+                self.assertEqual(decoded['type_name'],'BigRational')
+                self.assertEqual((decoded['numerator'],decoded['denominator']),
+                                 (numerator,denominator))
+
+    def test_app_ordered_probe_values(self):
+        """PureRef sorted these six crafted orders exactly as decoded here."""
+        f = PurFile.read(ROOT/'32-rational-probe.pur')
+        orders = [(decode_variant(r['sort_order'])['numerator'],
+                   decode_variant(r['sort_order'])['denominator']) for r in f.rows('items')]
+        self.assertEqual(orders,[(-3,1),(0,1),(3,1),(7,2),(5,1),(2**32,1)])
+        f.close()
+
+    def test_denominator_must_be_positive(self):
+        with self.assertRaises(ValueError):
+            rational(1,0)
+
+class FeatureTests(unittest.TestCase):
+    def test_dashed_stroke_matches_app_resave(self):
+        f = PurFile.read(ROOT/'33-dashed-app-2.0.3.pur')
+        flags = [decode_variant(r['strokes'])['strokes'][0]['dashed'] for r in f.rows('items_drawings')]
+        self.assertEqual(sorted(flags),[False,True])
+        f.close()
+        s = Scene()
+        s.drawing([[(0,0,0),(1,240,0)]])
+        s.drawing([[(0,0,0),(1,240,0)]],dashed=True)
+        s.drawing([[(0,0,0),(1,240,0)]],style=STROKE_FLAT)
+        generated = PurFile(s.to_bytes())
+        decoded = [decode_variant(r['strokes'])['strokes'][0]
+                   for r in generated.rows('items_drawings')]
+        self.assertEqual([stroke['style'] for stroke in decoded],
+                         [STROKE_ROUND,STROKE_DASHED,STROKE_FLAT])
+        self.assertEqual([stroke['point'] for stroke in decoded],[[0.0,0.0]]*3)
+        self.assertEqual({stroke['version'] for stroke in decoded},{STROKE_VERSION})
+        generated.close()
+
+    def test_strokes_written_before_the_version_byte_still_read(self):
+        """A first byte below 100 is the QColor, not a version."""
+        color = struct.pack('>b5H',1,255*257,240*257,200*257,60*257,0)
+        path = binary(painter_path([(0,0,0),(1,200,0)]))
+        reader = Reader(path); reader.unpack('IB'); reader.bytearray()
+        payload = (struct.pack('>I',1) + color + struct.pack('>d',16.0)
+                   + path[reader.pos:] + struct.pack('>2d',0.0,0.0))
+        decoded = decode_variant(variant(1024,payload,'QList<GraphicsDrawItem::Stroke>'))
+        stroke, = decoded['strokes']
+        self.assertEqual(stroke['rgba16'],[240*257,200*257,60*257,255*257])
+        self.assertEqual(stroke['width'],16.0)
+        self.assertEqual(stroke['style'],STROKE_ROUND)
+
+    def test_render_flags(self):
+        s = Scene()
+        s.image(ROOT/'red.png',grayscale=True)
+        s.image(ROOT/'red.png',x=100,flags=0)
+        f = PurFile(s.to_bytes())
+        self.assertEqual([r['flags'] for r in f.rows('items_images')],
+                         [RENDER_SMOOTH|RENDER_GRAYSCALE,0])
+        f.close()
+
+    def test_linked_resource(self):
+        s = Scene(); s.image_link(ROOT/'red.png')
+        f = PurFile(s.to_bytes())
+        row, = f.rows('images')
+        self.assertEqual((row['source_type'],row['data'],row['checksum']),(SOURCE_LINKED,None,None))
+        self.assertTrue(row['source'].endswith('red.png'))
+        self.assertEqual((row['width'],row['height']),(64,32))
+        f.close()
+
+    def test_app_linked_fixture(self):
+        f = PurFile.read(ROOT/'35-linked-2.0.3.pur')
+        row, = f.rows('images')
+        self.assertEqual((row['source_type'],row['data'],row['checksum']),(SOURCE_LINKED,None,None))
+        f.close()
+
+    def test_animation_fixture_and_gif_dimensions(self):
+        self.assertEqual(image_info((ROOT/'anim.gif').read_bytes()),('GIF',16,16))
+        f = PurFile.read(ROOT/'34-animation-2.0.3.pur')
+        row, = f.rows('items_images')
+        self.assertEqual(row['playback_state'],PLAYBACK_PLAYING)
+        self.assertEqual(f.rows('images')[0]['format'],'gif')
+        f.close()
+
+    def test_note_text_color_and_group_lock_mode(self):
+        s = Scene()
+        s.note('colored',text_color='#ff00ff')
+        s.group(lock_mode=LOCK_OPEN)
+        f = PurFile(s.to_bytes())
+        self.assertEqual(f.rows('items_notes')[0]['text_color'],'#ff00ff')
+        self.assertEqual(f.rows('items_groups')[0]['lock_mode'],LOCK_OPEN)
+        f.close()
+
 if __name__ == '__main__':
     unittest.main()

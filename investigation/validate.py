@@ -8,7 +8,18 @@ from pathlib import Path
 import sqlite3
 import tempfile
 from .make_fixtures import ROOT, run, png
-from pureref2 import Scene, PurFile, decode_variant, binary, unwrap, wrap
+from pureref2 import (Scene, PurFile, STROKE_DASHED, STROKE_FLAT, decode_variant, binary,
+                      unwrap, wrap)
+
+# Environment noise that says nothing about the file under test: the Linux AppImage
+# ships no font directory, and Qt reports the Wayland/X11 choice on every start.
+BENIGN = ('QFontDatabase: Cannot find font directory','Note that Qt no longer ships fonts',
+          'Ignoring WAYLAND_DISPLAY')
+
+def diagnostics(log):
+    return '\n'.join(line for line in log.splitlines()
+                     if ('[Warning]' in line or '[Critical]' in line)
+                     and not any(noise in line for noise in BENIGN))
 
 def validate():
     out = Path(tempfile.mkdtemp(prefix='validation-',dir=ROOT))
@@ -31,7 +42,7 @@ def validate():
         saved.touch()  # PureRef 2.1.3 CLI save-as requires an existing destination.
         log = run([f'load;{path}',f'exportScene;{render};512;512;false;false',f'save;{saved}','exit'])
         (out/(name+'.log')).write_text(log)
-        assert '[Warning]' not in log and '[Critical]' not in log,log
+        assert not diagnostics(log),diagnostics(log)
         assert render.stat().st_size > 0
         parsed = PurFile.read(saved)
         assert parsed.header['checksum_valid']
@@ -124,6 +135,32 @@ def validate():
     assert compact_png.read_bytes() == reference_png.read_bytes()
     assert compact_saved.rows('items_notes')[0]['style'] == 1
     results['compact_note_render_matches_app_fixture'] = True
+
+    # The thumbnail-less 2.0 envelope, plus the fields resolved by render probes:
+    # linked resources, render flags, animation frames and dashed strokes.
+    s = Scene()
+    g = s.group(name='2.0 envelope',lock_mode=0,background='#4020a0ff')
+    s.image_link(ROOT/'red.png',parent=g,x=-120,y=0)
+    s.image(ROOT/'blue.png',parent=g,x=0,y=0,grayscale=True)
+    s.image(ROOT/'blue.png',parent=g,x=60,y=0,flags=0)
+    s.image(ROOT/'anim.gif',parent=g,x=140,y=0,playback_state=2,playback_frame=1)
+    s.note('Linked and dashed',parent=g,x=0,y=-90,text_color='#ff40ff')
+    s.drawing([[(0,-140,80),(1,140,80)]],parent=g,dashed=True)
+    s.drawing([[(0,-140,110),(1,140,110)]],parent=g,style=STROKE_FLAT)
+    (out/'envelope-2.0.pur').write_bytes(s.to_bytes(format_version='2.0',application_version='2.0.3'))
+    assert unwrap((out/'envelope-2.0.pur').read_bytes())[0]['format_version'] == '2.0'
+    _,legacy = app_render('envelope-2.0',out/'envelope-2.0.pur')
+    images = {r['id']:r for r in legacy.rows('images')}
+    assert images[0]['source_type'] == 2 and images[0]['data'] is None
+    flags = {r['id']:r for r in legacy.rows('items_images')}
+    assert [flags[i]['flags'] for i in (2,3)] == [3,0]
+    assert (flags[4]['playback_state'],flags[4]['playback_frame']) == (2,1)
+    assert legacy.rows('items_notes')[0]['text_color'] == '#ff40ff'
+    assert legacy.rows('items_groups')[0]['lock_mode'] == 0
+    styles = [decode_variant(row['strokes'])['strokes'][0]['style']
+              for row in legacy.rows('items_drawings')]
+    assert styles == [STROKE_DASHED,STROKE_FLAT], f'stroke styles became {styles}'
+    results['envelope_2_0_and_probed_fields'] = True
     (out/'results.json').write_text(json.dumps(results,indent=2))
     print(json.dumps({'directory':str(out),**{k:v for k,v in results.items() if k!='mixed_inspection'}},indent=2))
     return out
