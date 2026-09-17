@@ -3,7 +3,7 @@
 An independent parser, format specification, and from-scratch writer for PureRef
 2.1 `.pur` files. Verified against **PureRef 2.1.3 on Windows**.
 
-![Canvas generated entirely in Python and rendered by PureRef](examples/standalone-demo.png)
+![Screenshot of the generated demo canvas in PureRef](examples/standalone-demo.png)
 
 The [demo canvas](examples/standalone-demo.pur) was created entirely in Python,
 including its image pixels. Writing files requires no PureRef installation, Qt,
@@ -22,7 +22,7 @@ The [format specification](FORMAT.md) documents the displaced SQLite container,
 MD5 checksum, exact [SQL schema](schema.sql), serialized Qt values, and evidence
 behind each interpretation.
 
-## What doesnt work (WIP)
+## What doesn't work (WIP)
 
 These features are unsupported or unverified, rather than confirmed working:
 
@@ -97,7 +97,7 @@ other formats, but only PNG/JPEG are integration-tested. The reader loads files
 into memory. `inspect` returns a readable summary; raw rows/database bytes retain
 data that specialized decoders do not interpret.
 
-## Tests and investigation
+## Tests
 
 ```sh
 python -m unittest discover -s tests -v
@@ -107,12 +107,6 @@ python -m investigation.validate
 Unit tests run without PureRef. Integration tests use the installed application;
 set `PUREREF_EXE` to override its executable path. They use isolated settings and
 synthetic files only.
-
-Verified: eleven unit tests, ten byte-exact fixture repacks, identical app-rendered
-image canvases, all four item classes, crop equivalence, nested groups, and JPEG
-preservation, and Compact notes matching an app-created fixture. Historical fixtures and experiments live in
-[`investigation/`](investigation/README.md), with a
-[validation summary](investigation/VALIDATION.json).
 
 ## Scope
 

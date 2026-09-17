@@ -60,8 +60,8 @@
       "sha256": "699c3feeadcf6421d542f0f1dde8eb8d1393e7a990ea678e60fa153c2a31ba3a"
     },
     "../examples/standalone-demo.pur": {
-      "bytes": 77932,
-      "sha256": "31b0be8975d2e3307854ee0401cd3f07b9e1490eb2bf158a79e1b2f9c8b62f3b"
+      "bytes": 98412,
+      "sha256": "e6e0913c8faf396454716c21009d7e32cdb308e7d9cec9c9926bea050a91826e"
     },
     "24-compact-note.pur": {
       "bytes": 45542,
