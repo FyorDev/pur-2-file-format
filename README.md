@@ -1,7 +1,8 @@
 # pur-2-file-format
 
 An independent parser, format specification, and from-scratch writer for PureRef
-2.x `.pur` files. Verified against **PureRef 2.1.3 on Windows** and **PureRef 2.0.3 on Linux**.
+2.x `.pur` files. Verified against **PureRef 2.1.3 on Windows** and **2.0.3 and
+2.1.3 on Linux**, which write the same format.
 
 For the PureRef 1.x format, see [FyorDev's PureRef-format](https://github.com/FyorDev/PureRef-format).
 
@@ -121,7 +122,9 @@ python -m investigation.validate
 
 Unit tests run without PureRef. Integration tests use the installed application;
 set `PUREREF_EXE` to override its executable path, and on Linux run them on an X
-display (`DISPLAY=:0 PUREREF_EXE=/usr/bin/PureRef python -m investigation.validate`). They use isolated settings and
+display (`DISPLAY=:0 PUREREF_EXE=/usr/bin/PureRef python -m investigation.validate`).
+All eight stages pass against both 2.0.3 and 2.1.3 on Linux, including the
+render comparison against the note fixture made by 2.1.3 on Windows. They use isolated settings and
 synthetic files only.
 
 ## Scope

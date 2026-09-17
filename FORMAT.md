@@ -13,7 +13,13 @@ standard-library implementation. It does not need PureRef, Qt, or a template to
 create files. PureRef is used only for the integration tests.
 
 Scope: envelope versions `2.0` and `2.1`, database schema version `200101`, as emitted by
-applications `2.1.3` and `2.0.3`. The envelope version is a *format* version, not the
+applications `2.1.3` and `2.0.3`. Those two write the *same* format: for one scene their files
+differ only in the application-version string, the checksum over it, and the copy of that string
+in `metadata`. 2.1.3 adds no table, column or serialized value — the only SQL it gained is
+`PRAGMA application_id;` and `SELECT thumbnail FROM metadata;`, which is the Windows Explorer
+thumbnail provider reading a preview. What 2.1 does add is user-facing: image auto-optimize and
+convert rules on import, and a per-image switch between embedded and linked storage, both of
+which change what lands in `images` without changing its shape. The envelope version is a *format* version, not the
 application version: PureRef **2.0.3 writes `2.1` envelopes**, and its files are read by this
 implementation unchanged (`investigation/30-app-2.0.3.pur`). The thumbnail-less `2.0` envelope
 layout in section 2.1 was reconstructed and verified against 2.0.3. The unrelated 1.x binary
@@ -171,8 +177,9 @@ INTEGER PRIMARY KEY; the observed schema declares no foreign-key constraints.
 The serializer is name-based and migrating (`PRAGMA table_info`, `ALTER TABLE … ADD/DROP COLUMN`),
 which has three practical consequences, all probe-verified:
 
-* **Column order is irrelevant.** 2.0.3 declares every table in a different order than 2.1.3, and
-  either order loads in either application.
+* **Column order is irrelevant.** It varies by build rather than by version: the 2.1.3-on-Windows
+  fixtures here declare every table in a different order than 2.0.3 and 2.1.3 on Linux, which
+  agree with each other exactly. Any order loads in any build.
 * **Unknown columns and tables load with a warning and are dropped on save**
   ("Encountered unknown column '%0' in table '%1' it will be dropped on save").
 * **Missing columns are fatal**, not migrated in: a database without `metadata.saved` fails with
