@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Machine-specific settings and raw runtime logs remain local.
+investigation/*.ini
+investigation/*.log
+investigation/fixture-generation-log.json
+investigation/validation-*/
+
+# Default outputs from the quickstart.
+/standalone-demo.pur
+/new-board.pur
+/new-board.sqlite
+/repacked-board.pur
+/extracted-images/

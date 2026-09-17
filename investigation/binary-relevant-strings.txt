@@ -1,0 +1,637 @@
+Brute force open .pur file without any metadata. This can be used to recover images from a partially corrupt .pur file.
+TransformCommand
+brokenItemMetadataDetected
+TransformGizmo
+TransformCommand
+QTransform
+TransformGizmo
+Transform Limit
+Set to enable a window mode directly when you start PureRef. Choose between Overlay, Mouse transparency, both, or last used. Select Normal to open PureRef without a mode enabled.
+Select and pack new images
+Enable transform gizmo
+Enable to show a transform gizmo around the selected images that can be interacted with to rotate and scale images.
+TransformGizmo
+Set visibility of the transform gizmo handles. Choose to show all, only borders, only handles or invisible. The handles stay interactable even when invisible.
+TransformGizmoDisplayMode
+Set diameter of transform gizmo handle.
+TransformGizmoHandleSize
+Set if the transform gizmo should fade out when PureRef is not the active window.
+TransformGizmoFadeWhenInactive
+TransformGizmoRotationMode
+TransformGizmoLollipopHandleSize
+TransformGizmoLollipopLength
+Images/Select All
+Images/Selection/Reset Transform
+Select location for temporary directory
+Select file to link
+Select items
+Select Items
+Deselect all items other than the item under the mouse cursor or the items inside a dragged out rectangle.
+Transform gizmo
+Transform Gizmo
+Snapped transform gizmo
+Snapped Transform Gizmo
+Center transform gizmo
+Center Transform Gizmo
+Individual transform gizmo
+Individual Transform Gizmo
+Transform gizmo move
+Transform Gizmo Move
+Reset transform
+Reset Transform
+Select all
+Select All
+Deselect all selected images.
+Select everything in the scene.
+Select background color
+When a group is locked, attempting to select anything inside it will select the group instead. <b>Double-click</b> an item in a locked group to select items inside.
+Select log file name
+Select which image format to convert the image to. Optimal will pick between JPG or PNG depending on the presence of an alpha channel.
+Invalid export directory, please select an existing location.
+ImageCache::ImageMetadata
+MovieCache::MovieMetadata
+File has corrupted metadata:
+Failed to load image metadata.
+Failed to load image metadata, the save file might be corrupt.
+Corrupt metadata encountered in %0.
+metadataerr
+metadataerr2
+Failed to read metadata of target save file:
+Updating incorrect metadata...
+class QString __cdecl SaveFileLoader::savePurBinary(class SaveFile &,class QString,struct SaveFileLoader::SaveMetadata,struct SceneStateData,class LoadJob *)
+Failed to read metadata of externally changed file:
+transform
+image_transform
+INTEGER PRIMARY KEY
+view_transform
+metadata
+source_type
+CREATE TABLE %0 (%1)
+SELECT * FROM items ORDER BY items.parent, items.id
+SELECT id FROM images where checksum=? AND source_type=?
+SELECT id FROM images where source=? AND source_type=?
+SELECT * FROM images where id=?
+SELECT origin, source, format, source_type, width, height FROM images where id=?
+SELECT * FROM items_images INNER JOIN items on items.id = items_images.id
+SELECT * FROM items_notes INNER JOIN items on items.id = items_notes.id
+SELECT * FROM items_drawings INNER JOIN items on items.id = items_drawings.id
+SELECT * FROM items_groups INNER JOIN items on items.id = items_groups.id
+SELECT * FROM (SELECT max(id) FROM items), (SELECT max(id) FROM images)
+SELECT * FROM metadata where id=?
+SELECT last_save_path FROM metadata where id=?
+SELECT last_load_path FROM metadata where id=?
+SELECT last_load_checksum FROM metadata where id=?
+UPDATE items SET z = new_z FROM(SELECT id AS id2, row_number() OVER(ORDER BY z) AS new_z FROM items) WHERE id2 == id
+UPDATE items SET sort_order = toBigRational(new_order) FROM(SELECT id AS id2, row_number() OVER(PARTITION by parent ORDER BY sort_order COLLATE collateBigRational) AS new_order FROM items) WHERE id2 == id
+SELECT MAX(items.id) FROM items
+SELECT id, source FROM images WHERE images.id NOT IN (SELECT items_images.image FROM items_images)
+SELECT * FROM items_images WHERE items_images.id NOT IN (SELECT items.id FROM items)
+SELECT * FROM items_notes WHERE items_notes.id NOT IN (SELECT items.id FROM items)
+SELECT name FROM sqlite_master WHERE type='table' AND name='lost_and_found'
+SELECT COUNT(1) FROM lost_and_found
+SELECT * FROM lost_and_found
+SELECT COUNT(1) FROM items
+SELECT application_version FROM metadata
+SELECT id FROM items LIMIT 1
+SELECT application_version, saved, last_load_path FROM metadata
+    <animateTransform attributeName="transform" type="rotate" from="360 12.5 12.5" to="0 12.5 12.5" dur="0.8s" repeatCount="indefinite" />
+      transformation or translation of a Source form, including but
+Object form shall mean any form resulting from mechanical transformation or translation of a Source form, including but not limited to compiled object code, generated documentation, and conversions to other media types.
+      transformation or translation of a Source form, including but
+in the appropriate machine-readable metadata fields within text or
+      transformation or translation of a Source form, including but
+Center transform gizmo
+jDeselect all items other than the item under the mouse cursor or the items inside a dragged out rectangle.
+Deselect all selected images.
+Individual transform gizmo
+Reset transform
+Select all
+Select ellipse tool
+Select eraser tool
+Select everything in the scene.
+Select items
+Select line tool
+Select pen tool
+Select rectangle tool
+Snapped transform gizmo
+Transform gizmo
+Transform gizmo move
+Select %0 color
+7Select which preset to save the current color setup to:
+Select color
+Select pen color
+#Corrupt metadata encountered in %0.
+>Failed to load image metadata, the save file might be corrupt.
+Failed to load image metadata.
+Select file to link
+When a group is locked, attempting to select anything inside it will select the group instead. <b>Double-click</b> an item in a locked group to select items inside.
+Select background color
+=Invalid export directory, please select an existing location.
+Select log file name
+'Select location for temporary directory
+Select next font
+Select previous font
+Select background color
+Select highlight color
+Select text color
+Updating incorrect metadata...
+sEnable to show a transform gizmo around the selected images that can be interacted with to rotate and scale images.
+Enable transform gizmo
+Select all text on note edit
+Select and pack new images
+Select which format to be used for the export. The original format option can only be used if the Export cropping option is disabled.
+Select which image format to convert the image to. Optimal will pick between JPG or PNG depending on the presence of an alpha channel.
+'Set diameter of transform gizmo handle.
+QSet if the transform gizmo should fade out when PureRef is not the active window.
+Set to enable a window mode directly when you start PureRef. Choose between Overlay, Mouse transparency, both, or last used. Select Normal to open PureRef without a mode enabled.
+Set visibility of the transform gizmo handles. Choose to show all, only borders, only handles or invisible. The handles stay interactable even when invisible.
+Select file to link
+Select highlight color
+Select text color
+TransformCommand
+TransformCommand
+TransformCommand
+Center transform gizmo
+jDeselect all items other than the item under the mouse cursor or the items inside a dragged out rectangle.
+Deselect all selected images.
+Individual transform gizmo
+Reset transform
+Select all
+Select ellipse tool
+Select eraser tool
+Select everything in the scene.
+Select items
+Select line tool
+Select pen tool
+Select rectangle tool
+Snapped transform gizmo
+Transform gizmo
+Transform gizmo move
+Select %0 color
+7Select which preset to save the current color setup to:
+Select color
+Select pen color
+#Corrupt metadata encountered in %0.
+>Failed to load image metadata, the save file might be corrupt.
+Failed to load image metadata.
+Select file to link
+When a group is locked, attempting to select anything inside it will select the group instead. <b>Double-click</b> an item in a locked group to select items inside.
+Select background color
+=Invalid export directory, please select an existing location.
+Select log file name
+'Select location for temporary directory
+Select next font
+Select previous font
+Select background color
+Select highlight color
+Select text color
+Updating incorrect metadata...
+sEnable to show a transform gizmo around the selected images that can be interacted with to rotate and scale images.
+Enable transform gizmo
+Select all text on note edit
+Select and pack new images
+Select which format to be used for the export. The original format option can only be used if the Export cropping option is disabled.
+Select which image format to convert the image to. Optimal will pick between JPG or PNG depending on the presence of an alpha channel.
+'Set diameter of transform gizmo handle.
+QSet if the transform gizmo should fade out when PureRef is not the active window.
+Set to enable a window mode directly when you start PureRef. Choose between Overlay, Mouse transparency, both, or last used. Select Normal to open PureRef without a mode enabled.
+Set visibility of the transform gizmo handles. Choose to show all, only borders, only handles or invisible. The handles stay interactable even when invisible.
+Select file to link
+Select highlight color
+Select text color
+TransformCommand
+TransformCommand
+TransformCommand
+Center transform gizmo
+jDeselect all items other than the item under the mouse cursor or the items inside a dragged out rectangle.
+Deselect all selected images.
+Individual transform gizmo
+Reset transform
+Select all
+Select ellipse tool
+Select eraser tool
+Select everything in the scene.
+Select items
+Select line tool
+Select pen tool
+Select rectangle tool
+Snapped transform gizmo
+Transform gizmo
+Transform gizmo move
+Select %0 color
+7Select which preset to save the current color setup to:
+Select color
+Select pen color
+#Corrupt metadata encountered in %0.
+>Failed to load image metadata, the save file might be corrupt.
+Failed to load image metadata.
+Select file to link
+When a group is locked, attempting to select anything inside it will select the group instead. <b>Double-click</b> an item in a locked group to select items inside.
+Select background color
+=Invalid export directory, please select an existing location.
+Select log file name
+'Select location for temporary directory
+Select next font
+Select previous font
+Select background color
+Select highlight color
+Select text color
+Updating incorrect metadata...
+sEnable to show a transform gizmo around the selected images that can be interacted with to rotate and scale images.
+Enable transform gizmo
+Select all text on note edit
+Select and pack new images
+Select which format to be used for the export. The original format option can only be used if the Export cropping option is disabled.
+Select which image format to convert the image to. Optimal will pick between JPG or PNG depending on the presence of an alpha channel.
+'Set diameter of transform gizmo handle.
+QSet if the transform gizmo should fade out when PureRef is not the active window.
+Set to enable a window mode directly when you start PureRef. Choose between Overlay, Mouse transparency, both, or last used. Select Normal to open PureRef without a mode enabled.
+Set visibility of the transform gizmo handles. Choose to show all, only borders, only handles or invisible. The handles stay interactable even when invisible.
+Select file to link
+Select highlight color
+Select text color
+TransformCommand
+TransformCommand
+TransformCommand
+Center transform gizmo
+jDeselect all items other than the item under the mouse cursor or the items inside a dragged out rectangle.
+Deselect all selected images.
+Individual transform gizmo
+Reset transform
+Select all
+Select ellipse tool
+Select eraser tool
+Select everything in the scene.
+Select items
+Select line tool
+Select pen tool
+Select rectangle tool
+Snapped transform gizmo
+Transform gizmo
+Transform gizmo move
+Select %0 color
+7Select which preset to save the current color setup to:
+Select color
+Select pen color
+#Corrupt metadata encountered in %0.
+>Failed to load image metadata, the save file might be corrupt.
+Failed to load image metadata.
+Select file to link
+When a group is locked, attempting to select anything inside it will select the group instead. <b>Double-click</b> an item in a locked group to select items inside.
+Select background color
+=Invalid export directory, please select an existing location.
+Select log file name
+'Select location for temporary directory
+Select next font
+Select previous font
+Select background color
+Select highlight color
+Select text color
+Updating incorrect metadata...
+sEnable to show a transform gizmo around the selected images that can be interacted with to rotate and scale images.
+Enable transform gizmo
+Select all text on note edit
+Select and pack new images
+Select which format to be used for the export. The original format option can only be used if the Export cropping option is disabled.
+Select which image format to convert the image to. Optimal will pick between JPG or PNG depending on the presence of an alpha channel.
+'Set diameter of transform gizmo handle.
+QSet if the transform gizmo should fade out when PureRef is not the active window.
+Set to enable a window mode directly when you start PureRef. Choose between Overlay, Mouse transparency, both, or last used. Select Normal to open PureRef without a mode enabled.
+Set visibility of the transform gizmo handles. Choose to show all, only borders, only handles or invisible. The handles stay interactable even when invisible.
+Select file to link
+Select highlight color
+Select text color
+TransformCommand
+TransformCommand
+TransformCommand
+Select pen color
+Select pen tool
+Select pen
+Select line tool
+Select ellipse tool
+Select rectangle tool
+Select eraser tool
+Select eraser
+Select next font
+Select Next Font
+Select previous font
+Select Previous Font
+Select which format to be used for the export. The original format option can only be used if the Export cropping option is disabled.
+SELECT thumbnail FROM metadata;
+TransformCommand
+INSERT INTO %0(%1) VALUES(%2)
+INSERT INTO %0(%1,%2) VALUES(?,%3) ON CONFLICT(%1) DO UPDATE SET %4
+DELETE FROM main.%0 WHERE %1 IN (SELECT %1 from %2.%0 WHERE %3=%4)
+INSERT INTO main.%0(%1,%2) SELECT %1,%2 FROM %3.%0 WHERE %3.%0.%4 IS NULL OR %3.%0.%4!=%5 ON CONFLICT(%1) DO UPDATE SET %6
+DELETE FROM %0 WHERE %1 NOT IN (SELECT %2.%3 FROM %2)
+SELECT data FROM sqlite_dbpage(%Q) WHERE pgno=?
+WITH RECURSIVE pages(p) AS (  SELECT 1    UNION  SELECT child FROM sqlite_dbptr('getpage()'), pages WHERE pgno=p)INSERT INTO recovery.schema SELECT  max(CASE WHEN field=0 THEN value ELSE NULL END),  max(CASE WHEN field=1 THEN value ELSE NULL END),  max(CASE WHEN field=2 THEN value ELSE NULL END),  max(CASE WHEN field=3 THEN value ELSE NULL END),  max(CASE WHEN field=4 THEN value ELSE NULL END)FROM sqlite_dbdata('getpage()') WHERE pgno IN (  SELECT p FROM pages) GROUP BY pgno, cell
+CREATE TABLE t1(a); DROP TABLE t1;
+PRAGMA writable_schema = 1;CREATE TABLE recovery.map(pgno INTEGER PRIMARY KEY, parent INT);CREATE TABLE recovery.schema(type, name, tbl_name, rootpage, sql);
+WITH dbschema(rootpage, name, sql, tbl, isVirtual, isIndex) AS (  SELECT rootpage, name, sql,     type='table',     sql LIKE 'create virtual%',    (type='index' AND (sql LIKE '%unique%' OR ?1))  FROM recovery.schema)SELECT rootpage, tbl, isVirtual, name, sql FROM dbschema   WHERE tbl OR isIndex  ORDER BY tbl DESC, name=='sqlite_sequence' DESC
+SELECT name FROM sqlite_schema WHERE type='table' ORDER BY rowid DESC LIMIT 1
+INSERT INTO sqlite_schema VALUES('table', %Q, %Q, 0, %Q)
+SELECT rootpage, sql FROM recovery.schema   WHERE type!='table' AND type!='index'
+SELECT rootpage, sql FROM recovery.schema   WHERE type!='table' AND (type!='index' OR sql NOT LIKE '%unique%')
+SELECT %Q || ') VALUES (' || %s || ')'
+SELECT 1 FROM sqlite_schema WHERE name=?
+CREATE TABLE %s(%s)
+INSERT INTO %s VALUES(%s)
+SELECT 'INSERT INTO %s VALUES(' || %s || ')'
+WITH RECURSIVE p(pgno) AS (  SELECT ?    UNION  SELECT parent FROM recovery.map AS m, p WHERE m.pgno=p.pgno) SELECT p.pgno FROM p, recovery.map m WHERE m.pgno=p.pgno     AND m.parent IS NULL
+WITH RECURSIVE seq(ii) AS (  SELECT 1 UNION ALL SELECT ii+1 FROM seq WHERE ii<%lld)SELECT ii FROM seq
+SELECT cell, field, value FROM sqlite_dbdata('getpage()') d WHERE d.pgno=? UNION ALL SELECT -1, -1, -1
+SELECT rootpage FROM recovery.schema   WHERE type='table' AND (sql NOT LIKE 'create virtual%')  ORDER BY (tbl_name='sqlite_sequence') ASC
+WITH RECURSIVE pages(page) AS (  SELECT ?1    UNION  SELECT child FROM sqlite_dbptr('getpage()'), pages     WHERE pgno=page) SELECT page, cell, field, value FROM sqlite_dbdata('getpage()') d, pages p WHERE p.page=d.pgno UNION ALL SELECT 0, 0, 0, 0
+WITH RECURSIVE seq(ii) AS (  SELECT 1 UNION ALL SELECT ii+1 FROM seq WHERE ii<%lld)SELECT pgno, child FROM sqlite_dbptr('getpage()')  UNION ALL SELECT NULL, ii FROM seq
+SELECT max(field)+1 FROM sqlite_dbdata('getpage') WHERE pgno = ?
+SELECT 1 FROM sqlite_schema
+Select all text on note edit
+Select text color
+Select highlight color
+CREATE TABLE x(  pgno INTEGER,  child INTEGER,  schema TEXT HIDDEN)
+CREATE TABLE x(  pgno INTEGER,  cell INTEGER,  field INTEGER,  value ANY,  schema TEXT HIDDEN)
+SELECT %.*s(0)
+SELECT %.*s(?2)
+SELECT data FROM sqlite_dbpage(?) WHERE pgno=?
+sRGBTransformImage
+RGBTransform/Image
+TransformImageColorspace
+TransformsRGBImage
+Transform/Image
+UnableToTransformColorspace
+UnableToCreateColorTransform
+  transform
++transform
+-transform
+Transform
+exif:JPEGPointTransforms
+exif:ExtensibleMetadataPlatform
+C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\553121\1\source_subfolder\MagickCore\transform.c
+TransformImage
+gradientTransform
+" transform="scale(%g,%g)">
+" transform="rotate(%g)">
+" transform="translate(%g,%g)">
+" transform="matrix(%g %g %g %g %g %g)">
+vips:metadata
+Image Transformation Matrix
+Zoom Select Status
+Magnifying Glass Select Status
+Window Select Status
+ECG Display Printing Select Status
+View Transform
+Physiological Display Select Status
+Shutter Select Status
+Volume Registration Transform Rotation Matrix
+Volume Registration Transform Translation Vector
+Transform Count
+Transform Sequence
+Transform Rotation Matrix
+Transform Translation Vector
+Transform Label
+Frame of Reference Transformation Type
+Frame of Reference Transformation Matrix
+Frame of Reference Transformation Comment
+Adobe XML metadata
+         <xap:MetadataDate>%s</xap:MetadataDate>
+/Metadata %.20g 0 R
+/Type /Metadata
+AppendBoxWithContents(jxl::MakeBoxType("jbrd"), jpeg_metadata)
+C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\d7b68d\1\src\lib\jxl\image_metadata.cc
+C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\d7b68d\1\src\lib/jxl/modular/transform/transform.h
+%s:%d: JXL_FAILURE: Invalid transform ID
+%s:%d: JXL_FAILURE: Invalid transform RCT type
+%s:%d: JXL_ERROR: Error while undoing transform.
+%s:%d: JXL_FAILURE: Inconsistent transforms
+transform.MetaApply(image)
+frame_header_.nonserialized_metadata != nullptr
+shared.image_features.patches.Decode( memory_manager, br, frame_dim_.xsize_padded, frame_dim_.ysize_padded, shared.metadata->m.num_extra_channels, &uses_extra_channels)
+modular_frame_decoder_.DecodeAcMetadata( frame_header_, dc_group_id, br, dec_state_)
+frame_header_.color_transform != ColorTransform::kXYB
+dec_state_->PreparePipeline( frame_header_, &frame_header_.nonserialized_metadata->m, decoded_, pipeline_options)
+WriteSizeHeader(metadata->size, writer, LayerType::Header, aux_out)
+WriteImageMetadata(metadata->m, writer, LayerType::Header, aux_out)
+Bundle::Write(metadata->transform_data, writer, LayerType::Header, aux_out)
+SetColorTransformFromJpegData( *jpeg_data, &frame_header->color_transform)
+%s:%d: JXL_FAILURE: Chroma subsampling is not supported when color transform is not YCbCr
+enc_modular->AddACMetadata( r, group_index, true, enc_state)
+ComputeACMetadata(pool, enc_state, enc_modular)
+output->WithMaxBits( nb_bits, LayerType::ControlFields, my_aux_out, [&] { output->Write(nb_bits, enc_modular->ac_metadata_size[group_index] - 1); return true; })
+enc_modular->EncodeStream( output, my_aux_out, LayerType::ControlFields, ModularStreamId::ACMetadata(group_index))
+CopyColorChannels(input, patch_rect, frame_info, metadata->m, pool, &color, alpha, &has_interleaved_alpha)
+CopyExtraChannels(input, patch_rect, frame_info, metadata->m, has_interleaved_alpha, pool, &extra_channels)
+ToXYB(c_enc, metadata->m.IntensityTarget(), black, pool, &color, cms, linear)
+enc_modular.ComputeEncodingData( frame_header, metadata->m, &color, extra_channels, group_rect, frame_dim, frame_area_rect, &enc_state, cms, pool, aux_out, cparams.modular_mode)
+ComputeEncodingData( cparams, frame_info, metadata, frame_data, jpeg_data.get(), x0, y0, xsize, ysize, cms, pool, frame_header, enc_modular, enc_state, &group_codes, aux_out)
+ComputeEncodingData( cparams, frame_info, metadata, frame_data, jpeg_data.get(), 0, 0, frame_data.xsize, frame_data.ysize, cms, pool, frame_header, enc_modular, enc_state, &group_codes, aux_out)
+EncodeFrame(memory_manager, all_params[task], frame_info, metadata, frame_data, cms, nullptr, &local_output, aux_out)
+metadata->m.xyb_encoded == (cparams.color_transform == ColorTransform::kXYB)
+EncodeFrame(memory_manager, cparams_orig, fi, metadata, frame_data, cms, pool, &output_processor, aux_out)
+metadata.size.Set(xsize, ysize)
+SetColorEncodingFromJpegData(*jpeg_data, &io->metadata.m.color_encoding)
+SetColorTransformFromJpegData(*jpeg_data, &io->Main().color_transform)
+io->SetFromImage(std::move(tmp), io->metadata.m.color_encoding)
+%s:%d: JXL_FAILURE: Failed to decode AC metadata
+gi.transform.empty()
+global_transform.empty()
+%s:%d: JXL_FAILURE: Undoing transforms failed
+C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\d7b68d\1\src\lib\jxl\modular\transform\transform.cc
+%s:%d: JXL_FAILURE: Unknown transformation (ID=%u)
+%s:%d: JXL_FAILURE: Invalid: transforming mix of meta and nonmeta
+%s:%d: JXL_FAILURE: Patches cannot use frames saved post color transforms
+frame_header.nonserialized_metadata != nullptr
+builder.AddStage(GetUpsamplingStage( frame_header.nonserialized_metadata->transform_data, 3 + ec, CeilLog2Nonzero(frame_header.extra_channel_upsampling[ec])))
+builder.AddStage(GetPatchesStage( &shared->image_features.patches, &frame_header.nonserialized_metadata->m.extra_channel_info))
+builder.AddStage(GetUpsamplingStage( frame_header.nonserialized_metadata->transform_data, c, CeilLog2Nonzero(frame_header.upsampling)))
+frame_header.color_transform != ColorTransform::kXYB
+modular_frame_encoder->AddACMetadata( r, modular_group_index, false, enc_state)
+Compute AC Metadata
+RunOnPool(pool, 0, shared.frame_dim.num_dc_groups, ThreadPool::NoInit, compute_ac_meta, "Compute AC Metadata")
+ib.SetFromImage( std::move(dc), ColorEncoding::LinearSRGB(shared.metadata->m.color_encoding.IsGray()))
+EncodeFrame( memory_manager, cparams, dc_frame_info, shared.metadata, ib, cms, pool, special_frame.get(), aux_out ? &dc_aux_out : nullptr)
+dec_state->output_encoding_info.SetFromMetadata(*shared.metadata)
+DecodeFrame(dec_state.get(), pool, frame_start, encoded_size, nullptr, &decoded, *shared.metadata)
+dec_state.output_encoding_info.SetFromMetadata(*shared.metadata)
+dec_state.PreparePipeline( frame_header, &shared.metadata->m, &decoded, options)
+FindBestPatchDictionary( *color, enc_state, cms, nullptr, aux_out, cparams_.color_transform == ColorTransform::kXYB)
+ib.SetFromImage( std::move(*reference_frame), state->shared.metadata->m.color_encoding)
+EncodeFrame( memory_manager, cparams, patch_frame_info, state->shared.metadata, ib, cms, pool, special_frame.get(), aux_out ? &patch_aux_out : nullptr)
+dec_state.output_encoding_info.SetFromMetadata( *state->shared.metadata)
+DecodeFrame(&dec_state, pool, frame_start, encoded_size, nullptr, &decoded, *state->shared.metadata)
+DecodeFrame( &dec_state, pool, frame_start, encoded_size, nullptr, &decoded, *state->shared.metadata)
+ApplyColorTransform( c_current, intensity_target, *image, black, Rect(*image), c_linear_srgb, cms, pool, want_linear ? linear : image)
+RunOnPool(pool, 0, static_cast<int>(num_stripes), ThreadPool::NoInit, transform, "RgbToYcbCr")
+metadata_->color_encoding.IsGray() == c_current.IsGray()
+C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\d7b68d\1\src\lib\jxl\modular\transform\palette.cc
+%s:%d: JXL_FAILURE: Error: Palette transform without palette.
+%s:%d: JXL_FAILURE: Corrupted transforms
+C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\d7b68d\1\src\lib/jxl/modular/transform/rct.cc
+C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\d7b68d\1\src\lib/jxl/modular/transform/squeeze.cc
+%s:%d: JXL_FAILURE: Corrupted squeeze transform
+color_space_transform->Run(thread_id, buf_src, buf_dst, xsize)
+color_space_transform->Init( c_src_, output_encoding_info_.color_encoding, output_encoding_info_.desired_intensity_target, xsize_, num_threads)
+FindBest8x8Transform( 8 * (bx + ix), 8 * (by + iy), static_cast<int>(cparams.speed_tier), butteraugli_target, config, cmap_factors, ac_strategy, block, scratch_space, quantized, &entropy, best_of_8x8s)
+dec_state->output_encoding_info.SetFromMetadata( *enc_state->shared.metadata)
+dec_state->PreparePipeline( frame_header, &enc_state->shared.metadata->m, &decoded, options)
+P@C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\d7b68d\1\src\lib\jxl\modular\transform\enc_transform.cc
+c_transform.Init(c_current, c_desired, intensity_target, rect.xsize(), num_threads)
+%s:%d: JXL_FAILURE: Black plane is missing for CMYK transform
+c_transform.Run(thread, src_buf, dst_buf, rect.xsize())
+Colorspace transform
+RunOnPool(pool, 0, rect.ysize(), init, transform_row, "Colorspace transform")
+C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\d7b68d\1\src\lib\jxl\modular\transform\enc_palette.cc
+C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\d7b68d\1\src\lib\jxl\modular\transform\enc_rct.cc
+C:\Gitlab-Runner\builds\jh7Z5dCF\0\pureref\pureref\deps\short\d7b68d\1\src\lib\jxl\modular\transform\enc_squeeze.cc
+BeforeTransform(t, buf_src, mutable_xform_src, xsize * t->channels_src)
+AfterTransform(t, buf_dst, xsize * t->channels_dst)
+%s:%d: JXL_FAILURE: Failed to create transform
+%s:%d: JXL_ERROR: Failed to create transform
+Invalid multiple component transformation
+Cannot take in charge multiple transformation stages.
+Error reading SPCod SPCoc element, Invalid transformation found
+IMF 2K/4K/8K profiles require 9-7 Irreversible Transform.
+IMF 2K/4K/8K profiles require 5-3 reversible Transform.
+GDAL Metadata
+  XMLPacket (XMP Metadata):
+select failed
+NULL input profiles on transform
+Wrong input color space on transform
+Wrong output color space on transform
+Adobe APP14 marker: version %d, flags 0x%04x 0x%04x, transform %d
+Unknown Adobe color transform code %d
+__cdecl crashpad::`anonymous-namespace'::Metadata::~Metadata(void)
+class std::unique_ptr<class crashpad::`anonymous namespace'::Metadata,struct std::default_delete<class crashpad::`anonymous namespace'::Metadata> > __cdecl crashpad::`anonymous-namespace'::Metadata::Create(const class base::FilePath &,const class base::FilePath &,const class base::FilePath &)
+void __cdecl crashpad::`anonymous-namespace'::Metadata::Read(void)
+void __cdecl crashpad::`anonymous-namespace'::Metadata::Write(void)
+internal write transform logic error
+invalid user transform pixel depth
+_ERROR_FORMAT_TRANSFORM
+<select citizensclothingwatching<li id="specificcarryingsentence<center>contrastthinkingcatch(e)southernMichael merchantcarouselpadding:interior.split("lizationOctober ){returnimproved--&gt;
+solutionswhen the Analyticstemplatesdangeroussatellitedocumentspublisherimportantprototypeinfluence&raquo;</effectivegenerallytransformbeautifultransportorganizedpublishedprominentuntil thethumbnailNational .focus();over the migrationannouncedfooter">
+(function() {recommendationform action="/transformationreconstruction.style.display According to hidden" name="along with thedocument.body.approximately Communicationspost" action="meaning &quot;--<![endif]-->Prime Ministercharacteristic</a> <a class=the history of onmouseover="the governmenthref="https://was originallywas introducedclassificationrepresentativeare considered<![endif]-->
+metadataChanged
+Select which preset to save the current color setup to:
+Select %0 color
+Select color
+SELECT * FROM %Q.%Q
+SELECT stat FROM %Q.sqlite_stat1 WHERE tbl = '%q_rowid'
+SELECT nodeno FROM '%q'.'%q_rowid' WHERE rowid = ?1
+SELECT parentnode FROM '%q'.'%q_parent' WHERE nodeno = ?1
+CREATE TABLE "%w"."%w_rowid"(rowid INTEGER PRIMARY KEY,nodeno
+);CREATE TABLE "%w"."%w_node"(nodeno INTEGER PRIMARY KEY,data);
+CREATE TABLE "%w"."%w_parent"(nodeno INTEGER PRIMARY KEY,parentnode);
+INSERT INTO "%w"."%w_node"VALUES(1,zeroblob(%d))
+INSERT INTO"%w"."%w_rowid"(rowid,nodeno)VALUES(?1,?2)ON CONFLICT(rowid)DO UPDATE SET nodeno=excluded.nodeno
+SELECT * FROM "%w"."%w_rowid" WHERE rowid=?1
+SELECT length(data) FROM '%q'.'%q_node' WHERE nodeno = 1
+CREATE TABLE x(%.*s INT
+SELECT data FROM %Q.'%q_node' WHERE nodeno=?
+SELECT parentnode FROM %Q.'%q_parent' WHERE nodeno=?1
+SELECT nodeno FROM %Q.'%q_rowid' WHERE rowid=?1
+SELECT count(*) FROM %Q.'%q%s'
+SELECT * FROM %Q.'%q_rowid'
+CREATE TABLE x(pgno INTEGER PRIMARY KEY, data BLOB, schema HIDDEN)
+ENABLE_COLUMN_METADATA
+CREATE TABLE x(key,value,type,atom,id,parent,fullkey,path,json HIDDEN,root HIDDEN)
+CREATE TABLE x
+NOT NULL
+sub-select returns %d columns - expected %d
+SELECT 1 FROM "%w".sqlite_master WHERE name NOT LIKE 'sqliteX_%%' ESCAPE 'X' AND sql NOT LIKE 'create virtual%%' AND sqlite_rename_test(%Q, sql, type, name, %d, %Q, %d)=NULL
+SELECT 1 FROM temp.sqlite_master WHERE name NOT LIKE 'sqliteX_%%' ESCAPE 'X' AND sql NOT LIKE 'create virtual%%' AND sqlite_rename_test(%Q, sql, type, name, 1, %Q, %d)=NULL
+SELECT raise(ABORT,%Q) FROM "%w"."%w"
+Cannot add a PRIMARY KEY column
+Cannot add a NOT NULL column with default value NULL
+SELECT CASE WHEN quick_check GLOB 'CHECK*' THEN raise(ABORT,'CHECK constraint failed') WHEN quick_check GLOB 'non-* value in*' THEN raise(ABORT,'type mismatch on DEFAULT') ELSE raise(ABORT,'NOT NULL constraint failed') END  FROM pragma_quick_check(%Q,%Q) WHERE quick_check GLOB 'CHECK*' OR quick_check GLOB 'NULL*' OR quick_check GLOB 'non-* value in*'
+PRIMARY KEY
+CREATE TABLE %Q.%s(%s)
+SELECT tbl,idx,stat FROM %Q.sqlite_stat1
+generated columns cannot be part of the PRIMARY KEY
+table "%s" has more than one primary key
+AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY
+CREATE TABLE
+PRIMARY KEY missing on table %s
+CREATE TABLE %Q.sqlite_sequence(name,seq)
+expressions prohibited in PRIMARY KEY and UNIQUE constraints
+INSERT INTO %Q.sqlite_master VALUES('index',%Q,%Q,#%d,%Q);
+index associated with UNIQUE or PRIMARY KEY constraint cannot be dropped
+cannot INSERT into generated column "%s"
+row not in PRIMARY KEY order for %s
+CREATE TABLE x(type text,name text,tbl_name text,rootpage int,sql text)
+INSERT INTO %Q.sqlite_master VALUES('trigger',%Q,%Q,0,'CREATE TRIGGER %q')
+%sON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint
+SELECT sql FROM "%w".sqlite_schema WHERE type='table'AND name<>'sqlite_sequence' AND coalesce(rootpage,1)>0
+SELECT sql FROM "%w".sqlite_schema WHERE type='index'
+SELECT'INSERT INTO vacuum_db.'||quote(name)||' SELECT*FROM"%w".'||quote(name)FROM vacuum_db.sqlite_schema WHERE type='table'AND coalesce(rootpage,1)>0
+INSERT INTO vacuum_db.sqlite_schema SELECT*FROM "%w".sqlite_schema WHERE type IN('view','trigger') OR(type='table'AND rootpage=0)
+ USING INTEGER PRIMARY KEY (%s
+JxlEncoderStoreJPEGMetadata
+heif_image_handle_get_list_of_metadata_block_IDs
+heif_image_handle_get_metadata_size
+heif_image_handle_get_metadata
+heif_context_add_exif_metadata
+heif_context_add_XMP_metadata
+?transform@QGraphicsView@@QEBA?AVQTransform@@XZ
+?transform@QGraphicsItem@@QEBA?AVQTransform@@XZ
+?levelOfDetailFromTransform@QStyleOptionGraphicsItem@@SANAEBVQTransform@@@Z
+?setTransformationAnchor@QGraphicsView@@QEAAXW4ViewportAnchor@1@@Z
+?setTransform@QGraphicsView@@QEAAXAEBVQTransform@@_N@Z
+?setTransform@QGraphicsItem@@QEAAXAEBVQTransform@@_N@Z
+?sceneTransform@QGraphicsItem@@QEBA?AVQTransform@@XZ
+?items@QGraphicsScene@@QEBA?AV?$QList@PEAVQGraphicsItem@@@@AEBVQRectF@@W4ItemSelectionMode@Qt@@W4SortOrder@5@AEBVQTransform@@@Z
+?initStyleOption@QGraphicsItemPrivate@@QEBAXPEAVQStyleOptionGraphicsItem@@AEBVQTransform@@AEBVQRegion@@_N@Z
+??0QTransform@@QEAA@XZ
+??8QTransform@@QEBA_NAEBV0@@Z
+??6@YAAEAVQDataStream@@AEAV0@AEBVQTransform@@@Z
+??5@YAAEAVQDataStream@@AEAV0@AEAVQTransform@@@Z
+??6@YA?AVQDebug@@V0@AEBVQTransform@@@Z
+?setMatrix@QTransform@@QEAAXNNNNNNNNN@Z
+?inverted@QTransform@@QEBA?AV1@PEA_N@Z
+ ?translate@QTransform@@QEAAAEAV1@NN@Z
+??DQTransform@@QEBA?AV0@AEBV0@@Z
+?map@QTransform@@QEBA?AVQPointF@@AEBV2@@Z
+ ?transform@QPainter@@QEBAAEBVQTransform@@XZ
+?scale@QTransform@@QEAAAEAV1@NN@Z
+?rotateRadians@QTransform@@QEAAAEAV1@NW4Axis@Qt@@@Z
+??9QTransform@@QEBA_NAEBV0@@Z
+?map@QTransform@@QEBA?AVQPolygonF@@AEBV2@@Z
+?mapRect@QTransform@@QEBA?AVQRectF@@AEBV2@@Z
+?fromTranslate@QTransform@@SA?AV1@NN@Z
+?fromScale@QTransform@@SA?AV1@NN@Z
+?setTransform@QPainter@@QEAAXAEBVQTransform@@_N@Z
+?map@QTransform@@QEBA?AVQLineF@@AEBV2@@Z
+?setWorldTransform@QPainter@@QEAAXAEBVQTransform@@_N@Z
+!?worldTransform@QPainter@@QEBAAEBVQTransform@@XZ
+??XQTransform@@QEAAAEAV0@AEBV0@@Z
+?map@QTransform@@QEBA?AVQPainterPath@@AEBV2@@Z
+?scaled@QImage@@QEBA?AV1@AEBVQSize@@W4AspectRatioMode@Qt@@W4TransformationMode@4@@Z
+?setAutoTransform@QImageReader@@QEAAX_N@Z
+??BQTransform@@QEBA?AVQVariant@@XZ
+??0QTransform@@QEAA@NNNNNN@Z
+?qHash@@YA_KAEBVQTransform@@_K@Z
+?processEvent@QWidgetTextControl@@UEAAXPEAVQEvent@@AEBVQTransform@@PEAVQWidget@@@Z
+?scaled@QPixmap@@QEBA?AV1@AEBVQSize@@W4AspectRatioMode@Qt@@W4TransformationMode@4@@Z
+?rotate@QTransform@@QEAAAEAV1@NW4Axis@Qt@@@Z
+ ?transformed@QImage@@QEBA?AV1@AEBVQTransform@@W4TransformationMode@Qt@@@Z
+.?AV<lambda_1_>@SettingTransformer@CustomizeSettings@@
+.?AV<lambda_1>@?1??graphicsItemTransformWithChildNegation@@YA?AW4GraphicsItemTransformResult@@PEAVGraphicsItem@@AEBVQTransform@@V?$QSet@PEAVGraphicsItem@@@@AEAV?$QHash@PEAVGraphicsItem@@VQTransform@@@@W4GraphicsItemTransformNegationMode@@W4GraphicsItemTransformOption@@@Z@
+.?AV<lambda_4>@?DL@??loadSqlite@SaveFileLoader@@AEAAXVQString@@USaveMetadata@2@PEAVLoadJob@@V?$function@$$A6AXAEAVSaveFile@@@Z@std@@V?$QFlags@W4LoadOption@SaveFileLoader@@@@@Z@
+.?AV<lambda_3>@?DL@??loadSqlite@SaveFileLoader@@AEAAXVQString@@USaveMetadata@2@PEAVLoadJob@@V?$function@$$A6AXAEAVSaveFile@@@Z@std@@V?$QFlags@W4LoadOption@SaveFileLoader@@@@@Z@
+.?AV<lambda_1>@?L@??loadSqlite@SaveFileLoader@@AEAAXVQString@@USaveMetadata@2@PEAVLoadJob@@V?$function@$$A6AXAEAVSaveFile@@@Z@std@@V?$QFlags@W4LoadOption@SaveFileLoader@@@@@Z@
+.?AV<lambda_1>@?1??getImageMetadata@SceneSerializerSqlite@@UEAA?AV?$Result@UImageData@@@@_J@Z@
+.?AV?$_Func_impl_no_alloc@V<lambda_1_>@SettingTransformer@CustomizeSettings@@VQVariant@@AEBV4@@std@@
+.?AVTransformCommand@@
+.?AV?$_Func_base@XPEAVGraphicsItem@@AEBVQTransform@@@std@@
+.?AV?$_Func_impl_no_alloc@V<lambda_1>@?1??graphicsItemTransformWithChildNegation@@YA?AW4GraphicsItemTransformResult@@PEAVGraphicsItem@@AEBVQTransform@@V?$QSet@PEAVGraphicsItem@@@@AEAV?$QHash@PEAVGraphicsItem@@VQTransform@@@@W4GraphicsItemTransformNegationMode@@W4GraphicsItemTransformOption@@@Z@XPEAV4@AEBV5@@std@@
+.?AV?$_Func_impl_no_alloc@V<lambda_1>@?L@??loadSqlite@SaveFileLoader@@AEAAXVQString@@USaveMetadata@3@PEAVLoadJob@@V?$function@$$A6AXAEAVSaveFile@@@Z@std@@V?$QFlags@W4LoadOption@SaveFileLoader@@@@@Z@XAEBV4@@std@@
+.?AV?$_Func_impl_no_alloc@V<lambda_3>@?DL@??loadSqlite@SaveFileLoader@@AEAAXVQString@@USaveMetadata@3@PEAVLoadJob@@V?$function@$$A6AXAEAVSaveFile@@@Z@std@@V?$QFlags@W4LoadOption@SaveFileLoader@@@@@Z@_NHH_JW4RecoverStepType@SceneSerializer@@AEBV4@@std@@
+.?AV?$_Func_impl_no_alloc@V<lambda_4>@?DL@??loadSqlite@SaveFileLoader@@AEAAXVQString@@USaveMetadata@3@PEAVLoadJob@@V?$function@$$A6AXAEAVSaveFile@@@Z@std@@V?$QFlags@W4LoadOption@SaveFileLoader@@@@@Z@XAEBV4@@std@@
+.?AV?$_Func_base@XPEAVGraphicsImageItem@@AEBVQTransform@@@std@@
+.?AV?$_Func_impl_no_alloc@V<lambda_2>@?4???R1?1???0ImageManagementHandler@@QEAA@PEAVQWidget@@AEAVLoadScheduler@@AEAVGraphicsScene@@AEAVSceneSerializer@@AEAVToastHandler@@AEAVActionHandler@@PEAVActionState@@AEAVPlatformHandler@@AEAVCommandHandler@@AEAVFrame@@@Z@QEBA@PEAVGraphicsImageItem@@VResourceHandle@@W4GraphicsImageItemSetImageMode@@@Z@XPEAVGraphicsImageItem@@AEBVQTransform@@@std@@
+.?AV?$_Func_impl_no_alloc@V<lambda_1>@?1??getImageMetadata@SceneSerializerSqlite@@UEAA?AV?$Result@UImageData@@@@_J@Z@VQSqlError@@AEAVQSqlQuery@@@std@@
+.?AVTransformGizmo@@
+.?AVResetTransformCommand@@
+.?AV?$_Func_impl_no_alloc@V<lambda_1>@?1??setImage@RelinkCommand@@QEAAXPEAVGraphicsImageItem@@VResourceHandle@@@Z@XPEAV4@AEBVQTransform@@@std@@
+.?AUCustomTransformData@jxl@@
+.?AUImageMetadata@jxl@@
+.?AVTransform@jxl@@

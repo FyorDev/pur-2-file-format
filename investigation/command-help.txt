@@ -1,0 +1,45 @@
+[Info]: Reading settings from C:/Users/Vacyyyy/AppData/Roaming/PureRef/PureRef.ini
+[Info]: Started with arguments: "--command-help"
+[Info]: Setting up temporary directory at: "C:/Users/Vacyyyy/AppData/Local/Temp/PureRef"
+[Info]:
+Example command:
+[Info]:   PureRef -c 'load;example.pur' -c 'exportScene;D:/example.png;1000;1000;false' -c 'exit'
+[Info]:
+Available commands:    [] = optional argument, () = default value
+[Info]:   - clearScene                     Clears the current scene.
+[Info]:
+
+[Info]:   - exit                           Closes the application.
+[Info]:      [Exit code(0)]
+[Info]:
+
+[Info]:   - exportImages                   Exports all images in the current scene to individual png files.
+[Info]:       Output directory             The directory must exist for the export to succeed.
+[Info]:      [Export cropping(true)]       If this is set to false the images will be exported unmodified.
+[Info]:      [Name override]               If this is provided all exported images will be named according to
+[Info]:                                     this string. %0 = Original name, %1 = Sequence number, %2 = Sequen
+[Info]:                                     ce number with leading zeroes, and %3 = Scene name. An empty templ
+[Info]:                                     ate will result in the original name.
+[Info]:
+
+[Info]:   - exportScene                    Exports the current scene.
+[Info]:       Path                         Output file path.
+[Info]:      [Width(-1)]                   Width of the output image (1-20000). If set to -1 it will try to us
+[Info]:                                     e the width of the scene.
+[Info]:      [Height(-1)]                  Height of the output image (1-20000). If set to -1 it will try to u
+[Info]:                                     se the height of the scene.
+[Info]:      [Canvas background(true)]     Include canvas background.
+[Info]:      [Image borders(true)]         Include image borders.
+[Info]:      [Include children(true)]      Include child items.
+[Info]:
+
+[Info]:   - load                           Loads given files. Additionally, If the files are images, you can p
+[Info]:                                     rovide x and y coordinates for where to place the loaded images.
+[Info]:       Paths                        Files to load. Comma separated list (escape with double commas)
+[Info]:      [X(0)]                        X-coordinate of the center of the loaded images
+[Info]:      [Y(0)]                        Y-coordinate of the center of the loaded images
+[Info]:
+
+[Info]:   - save                           Saves the current scene.
+[Info]:       Path                         Output file path.
+[Info]:
