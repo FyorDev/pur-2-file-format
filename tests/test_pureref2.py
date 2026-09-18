@@ -374,3 +374,37 @@ class PatternTests(unittest.TestCase):
             with self.subTest(fixture=path.name):
                 finished = subprocess.run(command, capture_output=True, timeout=300)
                 self.assertEqual((finished.stdout + finished.stderr).decode().strip(), '')
+
+
+class MetadataTests(unittest.TestCase):
+    """Every column FORMAT.md documents can also be written."""
+
+    def test_the_scene_rect_and_save_bookkeeping_round_trip(self):
+        scene = Scene()
+        scene.image_data(b'x'*8, 40, 20, format='PNG', source='/tmp/x.png')
+        data = scene.to_bytes(scene_rect=(-20, -10, 40, 20), last_save_path='/tmp',
+                              last_load_path='/tmp/board.pur', last_load_checksum='0'*32,
+                              saved=0, horizontal_scroll=-30, vertical_scroll=12)
+        f = PurFile(data)
+        self.addCleanup(f.close)
+        row = f.rows('metadata')[0]
+        self.assertEqual(decode_variant(row['scene_rect'])['value'], [-20, -10, 40, 20])
+        self.assertEqual(row['last_save_path'], '/tmp')
+        self.assertEqual(row['last_load_path'], '/tmp/board.pur')
+        self.assertEqual(row['last_load_checksum'], '0'*32)
+        self.assertEqual((row['saved'], row['horizontal_scroll'], row['vertical_scroll']),
+                         (0, -30, 12))
+
+    def test_an_unknown_metadata_column_is_refused(self):
+        with self.assertRaises(ValueError):
+            Scene().to_bytes(sceen_rect=(0, 0, 1, 1))
+
+    def test_origin_can_differ_from_source(self):
+        scene = Scene()
+        scene.image_data(b'x'*8, 4, 4, format='png', source='/tmp/dropped.png',
+                         origin='https://example.invalid/dropped.png')
+        f = PurFile(scene.to_bytes())
+        self.addCleanup(f.close)
+        row = f.rows('images')[0]
+        self.assertEqual(row['origin'], 'https://example.invalid/dropped.png')
+        self.assertEqual(row['source'], '/tmp/dropped.png')

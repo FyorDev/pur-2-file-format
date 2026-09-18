@@ -54,6 +54,8 @@ These features are unsupported or unverified, rather than confirmed working:
   reads them.
 - Automatic thumbnail generation; new files use an empty preview unless supplied.
   App previews are 256x256 JPEG scene renders, and PNG previews are accepted.
+  Generating one needs an image library, and this module stays standard-library
+  only.
 
 The [specification](FORMAT.md) distinguishes tested behavior from fields whose
 meaning still needs investigation.
@@ -102,6 +104,8 @@ scene.drawing([[(0, 0, 120), (1, 300, 120)]], parent=group,
               rgba=(255, 100, 20, 255), width=4, dashed=True)
 scene.image_link("on-disk.png", parent=group, x=500, grayscale=True)
 scene.write("generated.pur")               # or format_version="2.0"
+# Every documented metadata column can be set too:
+scene.write("framed.pur", scene_rect=(-200, -150, 400, 300), last_save_path="/tmp")
 
 
 board = PurFile.read("generated.pur")

@@ -518,7 +518,7 @@ class Scene:
         options.setdefault('name',path.stem)
         return self.image_data(None,w,h,format=fmt,source=str(path.resolve()).replace('\\','/'),**options)
 
-    def image_data(self,data,w,h,*,format='PNG',source='',x=0,y=0,name=None,parent=-1,
+    def image_data(self,data,w,h,*,format='PNG',source='',origin=None,x=0,y=0,name=None,parent=-1,
                    scale_x=1,scale_y=1,rotation=0,opacity=1,clip=None,comment=None,
                    flags=RENDER_SMOOTH,grayscale=False,playback_state=PLAYBACK_STATIC,
                    playback_frame=0,playback_speed=1.0):
@@ -526,6 +526,8 @@ class Scene:
 
         data=None stores a linked resource that PureRef loads from `source`.
         flags is a RenderFlag bitmask: RENDER_SMOOTH (bilinear) | RENDER_GRAYSCALE.
+        `origin` is where the image came from when that differs from `source` --
+        a URL for a browser drop, which PureRef downloads and embeds.
         """
         self._validate_comment(comment)
         if w<=0 or h<=0:
@@ -541,7 +543,8 @@ class Scene:
             self.resources[key] = rid
             self._insert('images',id=rid,
                          source_type=SOURCE_EMBEDDED if data is not None else SOURCE_LINKED,
-                         origin=source,source=source,format=format,checksum=checksum,
+                         origin=source if origin is None else origin,
+                         source=source,format=format,checksum=checksum,
                          data=data,width=w,height=h)
         i = self._item(name,x,y,parent,scale_x,scale_y,rotation,opacity,comment=comment)
         image_bounds = bounds(w,h)
@@ -590,11 +593,28 @@ class Scene:
         self._insert('items_drawings',id=i,strokes=strokes(paths,rgba,width,style,dashed=dashed))
         return i
 
-    def to_bytes(self,thumbnail=b'',format_version='2.1',application_version='2.1.3'):
-        """Serialize the scene. format_version='2.0' omits the header thumbnail field."""
+    # metadata columns a caller may set; the rest are computed here.
+    METADATA_COLUMNS = ('scene_rect','view_transform','horizontal_scroll','vertical_scroll',
+                        'last_save_path','last_load_path','last_load_checksum','saved')
+
+    def to_bytes(self,thumbnail=b'',format_version='2.1',application_version='2.1.3',**metadata):
+        """Serialize the scene. format_version='2.0' omits the header thumbnail field.
+
+        Keyword arguments fill in metadata columns: `scene_rect` (a QRectF cell
+        or an (x,y,w,h) tuple, the content rectangle PureRef frames the scene
+        with), the view and scroll state, and the save bookkeeping PureRef keeps
+        -- `last_save_path`, `last_load_path`, `last_load_checksum`, `saved`.
+        """
+        unknown = sorted(set(metadata) - set(self.METADATA_COLUMNS))
+        if unknown:
+            raise ValueError(f'Unknown metadata column(s): {", ".join(unknown)}')
+        if isinstance(metadata.get('scene_rect'),(tuple,list)):
+            metadata['scene_rect'] = rect(*metadata['scene_rect'])
+        row = dict(id=0,application_version=application_version,view_transform=transform(),
+                   horizontal_scroll=0,vertical_scroll=0,thumbnail=thumbnail,saved=1)
+        row.update(metadata)
         self.connection.execute('DELETE FROM metadata')
-        self._insert('metadata',id=0,application_version=application_version,view_transform=transform(),
-                     horizontal_scroll=0,vertical_scroll=0,thumbnail=thumbnail,saved=1)
+        self._insert('metadata',**row)
         self.connection.commit()
         return wrap(self.connection.serialize(),thumbnail=b'' if format_version=='2.0' else thumbnail,
                     format_version=format_version,application_version=application_version)
