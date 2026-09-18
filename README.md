@@ -31,7 +31,9 @@ template canvas, or third-party Python dependencies.
 
 The [format specification](FORMAT.md) documents the displaced SQLite container,
 MD5 checksum, exact [SQL schema](schema.sql), serialized Qt values, and evidence
-behind each interpretation.
+behind each interpretation. It also covers the neighbouring formats the
+application defines: the `pureref/binary` clipboard payload, how schema
+migration actually works, and the three-step file recovery.
 
 ## What doesn't work (WIP)
 

@@ -631,6 +631,69 @@ status. A discovered 2.1.3 CLI quirk: saving an already loaded scene to a *new*
 filename fails unless that destination exists; the tests create an empty file
 inside their new test directory before `save`.
 
+## 11b. Neighbouring formats, migration and repair
+
+Three things the binary describes that are not the file format itself but decide
+what happens to a file.
+
+### The clipboard: `pureref/binary`
+
+Copying items puts a `QMimeData` on the clipboard carrying the rendered image,
+the plain text and HTML of any note, and — under the mime type
+**`pureref/binary`**, present in every release from 1.10.4 to 2.1.3 — a
+`QDataStream` payload:
+
+```text
+QString  sending instance key     (LocalServer::getKey())
+int      item count
+QRectF   bounds of the selection
+item records                      (SaveFileLoader::writeItemMetadata)
+```
+
+Those records are the **1.x item stream**, not the SQLite schema: the paste path
+hands the stream to `SaveFileLoader::loadItemMetadata`, the same reader the 1.x
+file loader uses. Image pixels are not in the payload. The receiver takes the key
+from the payload and asks the sending instance for the data over a local socket
+(`LocalServer::sendCommandAsync`), which is why pasting between two different
+PureRef versions is refused and why "A pasted image item is missing its image
+data" exists as an error.
+
+### Migration is reconciliation, not a version ladder
+
+`migrateDb` sets `PRAGMA auto_vacuum = 1` and `PRAGMA encoding = 'UTF-8'`, drops
+a leftover `lost_and_found` table, then walks the expected schema comparing
+`PRAGMA table_info(%0)` against it, issuing `CREATE TABLE %0 (%1)` and
+`ALTER TABLE %0 ADD %1 %2` / `DROP COLUMN %1` as needed. There is no table of
+version-to-version steps.
+
+That reconciliation applies to the database PureRef works in, not to the file
+being opened: a file missing `metadata.saved` fails to load with
+`table metadata has no column named saved` at `user_version` 100000 exactly as it
+does at 200101. So `user_version` gates nothing but "too new", and a writer must
+still emit every column.
+
+### Recovery
+
+`SceneSerializerSqlite::recoverFromFile` tries three things in order, logging as
+it goes:
+
+1. hand the file to SQLite's recovery extension, which rebuilds what it can and
+   parks unattributable rows in `lost_and_found`;
+2. "trying to find header" — search the file for the `SQLite format 3` signature
+   and reassemble from there, which is the displaced-prefix layout of section 1
+   used as a repair heuristic;
+3. "trying with dummy header" — prepend a synthetic SQLite header so the
+   recovery extension can read the body at all.
+
+Afterwards it reads `lost_and_found`, patches `items`, `items_images` and
+`items_notes` back together, continues ids from `SELECT MAX(items.id) FROM
+items`, and looks for images no item references with
+`SELECT id, source FROM images WHERE images.id NOT IN (SELECT items_images.image
+FROM items_images)` before dropping the table again. The `-b/--brute-force`
+command-line flag reaches this path, but it runs asynchronously: a `-c save`
+issued in the same invocation writes an empty scene before recovery finishes, so
+it cannot be measured from the command line alone.
+
 ## 12. External context
 
 The container and application-specific encodings above come from local experiments.
