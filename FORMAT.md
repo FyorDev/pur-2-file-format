@@ -19,7 +19,11 @@ in `metadata`. 2.1.3 adds no table, column or serialized value — the only SQL 
 `PRAGMA application_id;` and `SELECT thumbnail FROM metadata;`, which is the Windows Explorer
 thumbnail provider reading a preview. What 2.1 does add is user-facing: image auto-optimize and
 convert rules on import, and a per-image switch between embedded and linked storage, both of
-which change what lands in `images` without changing its shape. The envelope version is a *format* version, not the
+which change what lands in `images` without changing its shape. Its new
+`ImageManagement` class registers exactly those operations —
+`LinkMode { None, Relink, Embed }` and `DownscaleMode { None, Downscale, Unscale }` — along with
+`DrawToolbar`'s tools and shapes; `investigation/enums-2.0.3.txt` and
+`investigation/enums-2.1.3.txt` list every registered enum in both. The envelope version is a *format* version, not the
 application version: PureRef **2.0.3 writes `2.1` envelopes**, and its files are read by this
 implementation unchanged (`investigation/30-app-2.0.3.pur`). The thumbnail-less `2.0` envelope
 layout in section 2.1 was reconstructed and verified against 2.0.3. The unrelated 1.x binary
@@ -430,6 +434,10 @@ temporary directory, not in the `.pur`.
 
 ### Animation
 
+Note that `playback_state` is **not** the `Movie::State` enum the binary registers
+(`NotRunning = 0`, `Paused = 1`, `Running = 2`): the stored values sit one higher, so the
+column is a separate, unregistered enum where 0 means "not an animation at all".
+
 An animated GIF is stored as ordinary embedded data (`format='gif'`) with
 `playback_state = 3`, `playback_frame = 0`, `playback_speed = 1.0`
 (`investigation/34-animation-2.0.3.pur`). Probing states 0-3 with `playback_frame = 1`: only
@@ -473,13 +481,15 @@ untested.
 item supplies the group name, transform, parent, and opacity. Children reference
 the group through `items.parent`. Group geometry is derived from its contents.
 
+`lock_mode` is `GraphicsGroupItem::LockMode`, and because that enum is registered with
+`Q_ENUM` its keys survive in the binary's meta object: **`Open = 0`, `Closed = 1`**, read out
+with `investigation/qmetaobject.py`. There is no third mode.
+
 App-generated groups have `background_color=NULL`, `lock_mode=1`. Explicit
 `#AARRGGBB` backgrounds are accepted and preserved by the app, with the alpha byte honoured
 (`#80ff0000` renders translucent). Two levels of nested groups are integration-tested.
-`lock_mode` 0, 1 and 2 all load and round-trip with no render difference, since locking only
-affects interaction; the moc metadata exposes `GraphicsGroupItem::LockMode` with a key `Closed`
-and the application default is 1, so 0 = open and 1 = closed (selecting a child selects the
-group). No third mode was observed.
+Values outside 0 and 1 load and round-trip with no render difference, since locking only affects
+interaction.
 
 ## 9. Drawings
 
@@ -530,8 +540,16 @@ path's end points by the stroke width — which is what a square cap needs.
 
 An application re-save keeps a style the file already had
 (`investigation/33-dashed-app-2.0.3.pur` came back with 0 and 1), but 2.0.3 and
-2.1.3 only ever *write* 0: their draw toolbar exposes color and width, and even a
-straight line drawn with it (`investigation/23-line.pur`) is style 0.
+2.1.3 only ever *write* 0: even a straight line drawn with the toolbar
+(`investigation/23-line.pur`) is style 0.
+
+The style is also **not** the drawing tool. 2.1 registers
+`DrawToolbar::DrawTool { None, Pen, Shape, Eraser }` and
+`DrawToolbar::Shape { Line, Ellipse, Rectangle }`, so 2.1 can draw ellipses and
+rectangles — but the schema and this struct are unchanged from 2.0.3, and the
+three style values render as round, dashed and flat-capped strokes in 2.1.3 just
+as they do in 2.0.3. Shapes therefore have to be stored as ordinary
+`QPainterPath` geometry inside a normal stroke.
 
 ### version, and strokes written before it existed
 
