@@ -28,6 +28,12 @@ template canvas, or third-party Python dependencies.
 - Sibling ordering for any `BigRational` value, including negative, zero,
   fractional, and multi-block magnitudes.
 - File inspection, image extraction, SQLite unpacking, and repacking.
+- Reading damaged files: a truncated, bit-flipped or otherwise broken `.pur`
+  comes back as a `FormatError`, or as a report with the unreadable cells shown
+  as hex, rather than as a crash from inside SQLite or a struct unpacker.
+- An [ImHex](https://imhex.werwolv.net) pattern, [pur2.hexpat](pur2.hexpat),
+  which reassembles the displaced database and offers it as a `scene.sqlite`
+  virtual file.
 
 The [format specification](FORMAT.md) documents the displaced SQLite container,
 MD5 checksum, exact [SQL schema](schema.sql), serialized Qt values, and evidence
@@ -105,6 +111,21 @@ sqlite_bytes = board.database
 board.close()
 ```
 
+`inspect()` reports the header, the pragmas PureRef gates a file on
+(`user_version`, `application_id`, page size, encoding), `PRAGMA
+integrity_check`, a schema report, and every row with its serialized cells
+decoded. The schema report is what a rejected file needs:
+
+```python
+>>> board.schema_report()
+{'unknown_tables': [], 'unknown_columns': {'items': ['mood']}, 'missing_columns': {}}
+```
+
+A missing column makes PureRef refuse the whole file ("Table metadata has no
+column named saved"), an unknown one loads with a warning and is dropped on the
+next save. `rows()` reads any table the file actually has, so a table or column
+a later PureRef adds is still inspectable.
+
 Use `scene.note("Compact note", style="compact")` for PureRef's actual Compact
 background mode. The default is `style="comfortable"`; changing the mode preserves
 the supplied position, text, and fixed-size settings.
@@ -122,7 +143,11 @@ python -m unittest discover -s tests -v
 python -m investigation.validate
 ```
 
-Unit tests run without PureRef. Integration tests use the installed application;
+Unit tests run without PureRef; they include a fuzz pass that truncates and
+bit-flips the fixtures and insists every result is a report or a `FormatError`.
+Set `PUREREF_PLCLI` to a
+[pattern-language CLI](https://github.com/WerWolv/PatternLanguage) to also run
+`pur2.hexpat` over every fixture. Integration tests use the installed application;
 set `PUREREF_EXE` to override its executable path, and on Linux run them on an X
 display (`DISPLAY=:0 PUREREF_EXE=/usr/bin/PureRef python -m investigation.validate`).
 All eight stages pass against both 2.0.3 and 2.1.3 on Linux, including the

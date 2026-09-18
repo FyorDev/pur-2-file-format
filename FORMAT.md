@@ -631,7 +631,7 @@ status. A discovered 2.1.3 CLI quirk: saving an already loaded scene to a *new*
 filename fails unless that destination exists; the tests create an empty file
 inside their new test directory before `save`.
 
-## 11b. Neighbouring formats, migration and repair
+## 12. Neighbouring formats, migration and repair
 
 Three things the binary describes that are not the file format itself but decide
 what happens to a file.
@@ -694,7 +694,33 @@ command-line flag reaches this path, but it runs asynchronously: a `-c save`
 issued in the same invocation writes an empty scene before recovery finishes, so
 it cannot be measured from the command line alone.
 
-## 12. External context
+## 13. Reading a file that is damaged
+
+SQLite reports corruption whenever the damaged page is touched, and it does so
+in its own exception types; a TEXT cell that is not valid UTF-8 raises from
+inside the cursor before any of this code sees it; and because SQLite enforces
+no column type, a damaged file can hold a number where a serialized payload
+belongs. Truncating and bit-flipping every fixture in `investigation/` turns up
+all three. `pureref2` maps them onto `FormatError`, or onto a cell reported as
+hex, so inspecting a file you suspect is broken is safe -- which is the case
+where inspection matters most.
+
+`PurFile.schema_report()` names what a rejected file is missing. PureRef reads
+its schema by column name and refuses a database that lacks one ("Table metadata
+has no column named saved"), while an extra table or column only produces a
+warning and is dropped on the next save.
+
+## 14. Looking at the bytes
+
+[pur2.hexpat](pur2.hexpat) is an [ImHex](https://imhex.werwolv.net) pattern for
+this container: it decodes the header, previews the thumbnail, reassembles the
+displaced database into an ImHex section, maps its b-tree pages, and registers
+the whole database as a `scene.sqlite` virtual file, which is the only way to
+see the scene -- carving from the `SQLite format 3` signature recovers just the
+displaced prefix. It also carries a `Variant` type for the serialized cells,
+to be placed by hand on a payload recovered through `binary()`.
+
+## 15. External context
 
 The container and application-specific encodings above come from local experiments.
 Qt's [serialization overview](https://doc.qt.io/qt-6/datastreamformat.html),

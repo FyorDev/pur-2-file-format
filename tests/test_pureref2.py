@@ -1,6 +1,9 @@
 import hashlib
+import os
+import shutil
 import sqlite3
 import struct
+import subprocess
 import unittest
 from pathlib import Path
 from pureref2 import *
@@ -330,3 +333,44 @@ class SchemaReportTests(unittest.TestCase):
         f = PurFile(wrap(edited.serialize()))
         self.addCleanup(f.close)
         self.assertEqual(f.schema_report()['missing_columns'], {'metadata': ['saved']})
+
+
+class PatternTests(unittest.TestCase):
+    """pur2.hexpat is a second implementation of the container, for ImHex.
+
+    It cannot share code with this module, so what the tests can check is that
+    the two still agree on the constants. Point PUREREF_PLCLI at a
+    pattern-language CLI to also run the pattern over every fixture:
+
+        PUREREF_PLCLI=~/PatternLanguage/build/cli/plcli python -m unittest discover -s tests
+    """
+
+    PATTERN = ROOT.parent/'pur2.hexpat'
+
+    def setUp(self):
+        self.text = self.PATTERN.read_text()
+
+    def test_the_constants_match_the_schema_this_module_writes(self):
+        self.assertIn('200101', self.text)            # PRAGMA user_version
+        self.assertIn('940753918', self.text)         # PRAGMA application_id
+        for version in ENVELOPE_VERSIONS:
+            self.assertIn(f'"{version}"', self.text)
+        for name in PurFile.VARIANT_COLUMNS:
+            self.assertIn(name, self.text)
+
+    def test_it_reassembles_the_database_rather_than_carving_it(self):
+        self.assertIn('copy_value_to_section', self.text)
+        self.assertIn('scene.sqlite', self.text)
+
+    def test_every_fixture_parses(self):
+        interpreter = os.environ.get('PUREREF_PLCLI') or shutil.which('plcli')
+        if not interpreter:
+            self.skipTest('set PUREREF_PLCLI to a pattern-language CLI')
+        includes = Path('/usr/share/imhex/includes')
+        for path in sorted(ROOT.glob('*.pur')):
+            command = [interpreter, 'run', '-p', str(self.PATTERN), '-i', str(path)]
+            if includes.is_dir():
+                command += ['-I', str(includes)]
+            with self.subTest(fixture=path.name):
+                finished = subprocess.run(command, capture_output=True, timeout=300)
+                self.assertEqual((finished.stdout + finished.stderr).decode().strip(), '')
