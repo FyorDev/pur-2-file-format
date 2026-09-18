@@ -1,4 +1,5 @@
 import hashlib
+import sqlite3
 import struct
 import unittest
 from pathlib import Path
@@ -242,3 +243,90 @@ class FeatureTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class RobustnessTests(unittest.TestCase):
+    """A damaged file may be refused, but it may not crash the reader.
+
+    Every fixture is truncated and bit-flipped, and each result has to come back
+    as a report or as a FormatError. Anything else -- a sqlite3 error escaping, a
+    cell that is not UTF-8 raising from inside a cursor, a number where a payload
+    belongs -- is a bug here, because the input is somebody else's file.
+    """
+
+    def attempt(self, data):
+        try:
+            f = PurFile(data)
+        except (FormatError, ValueError):
+            return None
+        try:
+            return f.inspect()
+        except (FormatError, ValueError):
+            return None
+        finally:
+            f.close()
+
+    def test_truncation(self):
+        for name in ['01-image.pur', '20-note.pur', '22-drawing.pur', '30-app-2.0.3.pur']:
+            data = (ROOT/name).read_bytes()
+            for length in [0, 1, 16, 100, 108, len(data)//3, len(data)//2, len(data)-1]:
+                with self.subTest(name=name, length=length):
+                    self.attempt(data[:length])
+
+    def test_bit_flips(self):
+        for name in ['01-image.pur', '21-group.pur', '23-line.pur', '31-envelope-2.0.pur']:
+            data = bytearray((ROOT/name).read_bytes())
+            step = max(1, len(data)//128)
+            for offset in range(0, len(data), step):
+                for bit in (0x01, 0x80):
+                    damaged = bytearray(data)
+                    damaged[offset] ^= bit
+                    with self.subTest(name=name, offset=offset, bit=bit):
+                        self.attempt(bytes(damaged))
+
+    def test_inputs_that_are_not_pur_files(self):
+        for data in [b'', b'\0'*8, b'SQLite format 3\0', b'not a pur file', bytes(range(256))*4]:
+            with self.subTest(head=data[:8]):
+                with self.assertRaises(FormatError):
+                    PurFile(data)
+
+    def test_a_number_where_a_payload_belongs_is_reported(self):
+        self.assertEqual(PurFile.opaque(42), {'not_a_payload': '42'})
+        with self.assertRaises(FormatError):
+            binary(42)
+
+
+class SchemaReportTests(unittest.TestCase):
+    def setUp(self):
+        self.file = PurFile.read(ROOT/'30-app-2.0.3.pur')
+        self.addCleanup(self.file.close)
+
+    def test_an_app_file_matches_the_schema_this_package_writes(self):
+        self.assertEqual(self.file.schema_report(),
+                         {'unknown_tables': [], 'unknown_columns': {}, 'missing_columns': {}})
+
+    def test_the_pragmas_are_the_ones_pureref_gates_on(self):
+        pragmas = self.file.pragmas()
+        self.assertEqual(pragmas['user_version'], 200101)
+        self.assertEqual(pragmas['application_id'], 940753918)
+        self.assertEqual(pragmas['encoding'], 'UTF-8')
+
+    def test_a_column_pureref_added_later_is_still_readable(self):
+        scene = Scene()
+        scene.image_data(b'x'*8, 4, 4, format='PNG', source='/tmp/x.png')
+        scene.connection.execute('ALTER TABLE items ADD COLUMN mood TEXT')
+        scene.connection.execute("UPDATE items SET mood='new'")
+        f = PurFile(scene.to_bytes())
+        self.addCleanup(f.close)
+        self.assertEqual(f.schema_report()['unknown_columns'], {'items': ['mood']})
+        self.assertEqual(f.rows('items')[0]['mood'], 'new')
+
+    def test_a_missing_column_is_named(self):
+        # PureRef refuses such a file outright: "Table metadata has no column
+        # named saved". Reporting which column is gone is the point of the check.
+        _, database = unwrap(Scene().to_bytes())
+        edited = sqlite3.connect(':memory:')
+        edited.deserialize(database)
+        edited.execute('ALTER TABLE metadata DROP COLUMN saved')
+        f = PurFile(wrap(edited.serialize()))
+        self.addCleanup(f.close)
+        self.assertEqual(f.schema_report()['missing_columns'], {'metadata': ['saved']})

@@ -132,8 +132,16 @@ def wrap(db, *, application_version='2.1.3', save_token=None, thumbnail=b'', res
             + qstring(application_version) + qstring(checksum) + tail)
 
 def binary(value):
-    """Qt writes serialized bytes as Latin-1 QStrings in SQLite TEXT cells."""
-    return value.encode('latin1') if isinstance(value, str) else value
+    """Qt writes serialized bytes as Latin-1 QStrings in SQLite TEXT cells.
+
+    SQLite enforces no column type, so a damaged file can hold a number where a
+    payload belongs; that is a format error, not a crash in the caller.
+    """
+    if isinstance(value, str):
+        return value.encode('latin1', errors='replace')
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return bytes(value)
+    raise FormatError(f'A serialized cell holds {type(value).__name__}, not bytes')
 
 def variant(type_id, payload, name=None):
     return (struct.pack('>IB',type_id,0) + (qbytes(name.encode()+b'\0') if name else b'') + payload).decode('latin1')
@@ -333,13 +341,33 @@ def decode_variant(value):
         result['tail_hex'] = raw[r.pos:].hex()
     return result
 
+def text_or_bytes(raw):
+    """A TEXT cell as text, or as raw bytes when it is not valid UTF-8.
+
+    Payloads are stored as Latin-1 mapped strings, so a healthy file decodes
+    cleanly. A damaged one can hold a sequence that is not UTF-8 at all, which
+    sqlite3's default factory raises on from inside the cursor.
+    """
+    try:
+        return raw.decode()
+    except UnicodeDecodeError:
+        return raw
+
 class PurFile:
+    """A .pur opened for reading. Every failure is a FormatError."""
+
+    TABLES = ('images','metadata','items','items_images','items_notes','items_groups','items_drawings')
+
     def __init__(self, data):
         self.header,self.database = unwrap(data)
         self.connection = sqlite3.connect(':memory:')
-        self.connection.deserialize(self.database)
+        try:
+            self.connection.deserialize(self.database)
+        except sqlite3.Error as error:
+            raise FormatError(f'The reconstructed database will not open: {error}') from error
         self.connection.execute('PRAGMA query_only=ON')
         self.connection.row_factory = sqlite3.Row
+        self.connection.text_factory = text_or_bytes
 
     @classmethod
     def read(cls,path):
@@ -348,31 +376,99 @@ class PurFile:
     def close(self):
         self.connection.close()
 
+    def query(self, sql, *args):
+        """Run one statement. A damaged database reports itself through SQLite,
+        including column names that are not UTF-8, which sqlite3 decodes itself."""
+        try:
+            return list(self.connection.execute(sql, args))
+        except (sqlite3.Error, UnicodeDecodeError) as error:
+            raise FormatError(f'{sql.split()[0].lower()} failed: {error}') from error
+
+    def tables(self):
+        names = [row[0] for row in
+                 self.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
+        if not all(isinstance(name, str) for name in names):
+            raise FormatError('The schema holds a table name that is not text')
+        return names
+
+    def columns(self, table):
+        return [row[1] for row in self.query(f'PRAGMA table_info("{table.replace(chr(34), chr(34)*2)}")')]
+
     def rows(self, table):
-        if table not in ('images','metadata','items','items_images','items_notes','items_groups','items_drawings'):
+        """Every row of `table`, values exactly as stored. Tables this package
+        does not know about are readable too: PureRef may add one."""
+        if table not in self.tables():
             raise ValueError('Unknown table')
-        return [dict(row) for row in self.connection.execute('SELECT * FROM '+table)]
+        return [dict(row) for row in self.query(f'SELECT * FROM "{table.replace(chr(34), chr(34)*2)}"')]
+
+    def pragmas(self):
+        """The values PureRef gates a file on, plus the page geometry."""
+        names = ('user_version','application_id','page_size','auto_vacuum','encoding')
+        return {name: self.query(f'PRAGMA {name}')[0][0] for name in names}
+
+    def schema_report(self):
+        """What this schema has that the package does not know, and the other
+        way round: a missing column makes PureRef refuse the whole file."""
+        present = self.tables()
+        declared = {table: [line.split('(',1)[1].rstrip(');').split(',') for line in SCHEMA.splitlines()
+                            if line.startswith(f'CREATE TABLE {table} ')][0]
+                    for table in self.TABLES}
+        missing = {}
+        unknown_columns = {}
+        for table, entries in declared.items():
+            wanted = [entry.split()[0] for entry in entries]
+            if table not in present:
+                missing[table] = wanted
+                continue
+            have = self.columns(table)
+            absent = [name for name in wanted if name not in have]
+            extra = [name for name in have if name not in wanted]
+            if absent:
+                missing[table] = absent
+            if extra:
+                unknown_columns[table] = extra
+        return dict(unknown_tables=[name for name in present if name not in self.TABLES],
+                    unknown_columns=unknown_columns, missing_columns=missing)
+
+    VARIANT_COLUMNS = {'transform','image_transform','image_bounds','sort_order',
+                       'scene_rect','view_transform','fixed_size','strokes'}
 
     def inspect(self):
+        """Everything in the file, decoded as far as it can be.
+
+        A cell that cannot be decoded is reported as hex rather than raised over,
+        because inspecting a file you suspect is damaged is the point of this.
+        """
         out = {'header':{k:v for k,v in self.header.items() if k!='thumbnail'}}
         out['header']['thumbnail_bytes'] = len(self.header['thumbnail'] or b'')
-        out['integrity_check'] = [r[0] for r in self.connection.execute('PRAGMA integrity_check')]
-        variants = {'transform','image_transform','image_bounds','sort_order','scene_rect','view_transform','fixed_size','strokes'}
-        for table in ('images','metadata','items','items_images','items_notes','items_groups','items_drawings'):
+        out['pragmas'] = self.pragmas()
+        out['integrity_check'] = [r[0] for r in self.query('PRAGMA integrity_check')]
+        out['schema'] = self.schema_report()
+        for table in list(self.TABLES) + out['schema']['unknown_tables']:
+            if table not in self.tables():
+                continue
             rows = self.rows(table)
             for row in rows:
                 for key,value in list(row.items()):
-                    if key in variants and value is not None:
+                    if key in self.VARIANT_COLUMNS and value is not None:
                         try:
                             row[key] = decode_variant(value)
                         except (ValueError,struct.error):
-                            row[key] = {'raw_hex':binary(value).hex()}
-                    elif isinstance(value,bytes):
+                            row[key] = self.opaque(value)
+                    elif isinstance(value,(bytes,bytearray)):
                         row[key] = {'bytes':len(value),'md5':hashlib.md5(value).hexdigest()}
                     elif isinstance(value,str) and '\0' in value:
-                        row[key] = {'raw_hex':binary(value).hex()}
+                        row[key] = self.opaque(value)
             out[table] = rows
         return out
+
+    @staticmethod
+    def opaque(value):
+        """A cell shown as bytes because it could not be read as what it claims."""
+        try:
+            return {'raw_hex':binary(value).hex()}
+        except FormatError:
+            return {'not_a_payload':repr(value)[:80]}
 
 class Scene:
     """Construct a fresh schema; no template, installed Qt, or PureRef needed."""
