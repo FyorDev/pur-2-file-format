@@ -22,8 +22,8 @@ convert rules on import, and a per-image switch between embedded and linked stor
 which change what lands in `images` without changing its shape. Its new
 `ImageManagement` class registers exactly those operations —
 `LinkMode { None, Relink, Embed }` and `DownscaleMode { None, Downscale, Unscale }` — along with
-`DrawToolbar`'s tools and shapes; `investigation/enums-2.0.3.txt` and
-`investigation/enums-2.1.3.txt` list every registered enum in both. The envelope version is a *format* version, not the
+`DrawToolbar`'s tools and shapes; `investigation/metaobjects-2.0.3.txt` and
+`investigation/metaobjects-2.1.3.txt` list every registered enum, method and property in both. The envelope version is a *format* version, not the
 application version: PureRef **2.0.3 writes `2.1` envelopes**, and its files are read by this
 implementation unchanged (`investigation/30-app-2.0.3.pur`). The thumbnail-less `2.0` envelope
 layout in section 2.1 was reconstructed and verified against 2.0.3. The unrelated 1.x binary
@@ -241,6 +241,12 @@ All numeric payload fields below are big-endian; reals are IEEE-754 binary64.
 These numeric type IDs match the observed serialized stream, not necessarily
 the running Qt installation's native QMetaType IDs.
 
+These numbers are plain `QMetaType` ids, which is worth knowing because it makes them
+predictable rather than magic: 20 is `QRectF`, 22 is `QSizeF`, 80 is `QTransform`, and 1024 is
+`QMetaType::User` — the id Qt writes for any type outside its builtin set, followed by the
+registered type name. `investigation/qmetaobject.py` prints the same table when it names method
+argument types.
+
 | Type ID | Meaning | Payload |
 |---:|---|---|
 | 20 | QRectF | doubles x, y, width, height |
@@ -358,7 +364,9 @@ joins to `items` through `id` and references `images.id` through `image`.
 | `image` | Resource ID |
 | `image_transform` | QTransform mapping image pixels to local item coordinates |
 | `image_bounds` | QPainterPath clipping boundary in local item coordinates |
-| `playback_speed` | 1.0 for static images |
+| `playback_speed` | 1.0 for static images; a **float** internally, per the
+  `playbackSpeedChanged(float newSpeed)` signal, so expect single-precision values in the
+  `REAL` column |
 | `playback_state` | 0 for static images |
 | `playback_frame` | 0 for static images |
 | `flags` | `GraphicsImageItem::RenderFlag` bitmask, 1 for ordinary static images |

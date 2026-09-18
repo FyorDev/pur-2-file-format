@@ -22,12 +22,15 @@ are development evidence, not inputs required by the library or writer.
   re-save, which re-serialized the dash flag as `options[19]`.
 - `34-animation-2.0.3.pur`, `35-linked-2.0.3.pur`, `anim.gif`: app-created
   animation and linked-resource (`Embed Local Files=false`) fixtures.
-- `qmetaobject.py`: reads the `Q_ENUM`/`Q_FLAG` keys straight out of a stripped
-  PureRef binary by walking its exported `staticMetaObject` tables, which is how
+- `qmetaobject.py`: reads what moc left in a stripped PureRef binary by walking
+  its exported `staticMetaObject` tables — every `Q_ENUM` key, and every signal,
+  slot and property with its declared types and argument names. That is how
   `GraphicsGroupItem::LockMode` and the 2.1 drawing and image-management enums
-  were confirmed rather than guessed. Handles both string-table layouts, so it
-  works on the Qt 5 1.x builds too — where PureRef registers no enums at all.
-  `enums-2.0.3.txt` and `enums-2.1.3.txt` are its output for the two 2.x releases.
+  were confirmed rather than guessed, and how `playback_speed` turned out to be a
+  float. It handles both string-table layouts, so it also works on the Qt 5 1.x
+  builds, which register no enums but do expose their slots.
+  `metaobjects-2.0.3.txt` and `metaobjects-2.1.3.txt` are its output for the two
+  2.x releases.
 - `EVIDENCE.json`: hashes of the original experiments and installed app binary.
 - `binary-relevant-strings.txt`, `command-help.txt`, and intermediate renders:
   historical investigation material.
